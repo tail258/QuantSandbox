@@ -26,43 +26,44 @@ Quant Simulate System (A 股量化回测与时空推演沙盘)
 环境安装与运行指南
 本项目需要你具备基本的 Python 和 Node.js 运行环境。
 
-1. 后端部署与启动
+# 一. 后端部署与启动
 
 建议使用虚拟环境运行本项目。
 
-# 克隆项目到本地
+1. 克隆项目到本地
 git clone https://github.com/你的用户名/quant_simulate_system.git
 cd quant_simulate_system
 
-# 创建并激活虚拟环境 (Windows示例)
+2. 创建并激活虚拟环境 (Windows示例)
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 
-# 安装核心依赖
+3. 安装核心依赖
 pip install fastapi uvicorn pandas numpy akshare pyarrow pyyaml
 
-# 启动后端服务
+4. 启动后端服务
 uvicorn backend.main:app --reload
 启动成功后，后端服务将运行在 http://127.0.0.1:8000。
 
-2. 前端部署与启动
+# 二. 前端部署与启动
 
 请保持后端终端运行，新开一个终端窗口进入前端目录。
 
-# 进入前端目录
+1. 进入前端目录
 cd frontend
 
-# 安装依赖 (注意图表库锁定了支持 marker 的 4.2.3 稳定版本)
+2. 安装依赖 (注意图表库锁定了支持 marker 的 4.2.3 稳定版本)
 npm install vue-router pinia axios element-plus dayjs
 npm install lightweight-charts@4.2.3
 
-# 启动开发服务器
+3. 启动开发服务器
 npm run dev
 启动成功后，打开浏览器访问 http://localhost:5173/ 即可进入系统。
 
-配置指南 (config.yaml)
+# 配置指南 (config.yaml)
 系统的运行高度依赖于项目根目录下的 config.yaml 配置文件。你无需修改代码，只需调整配置即可完成策略回测。
 ![alt text](image_2.png)
+
 配置项详解
 打开根目录下的 config.yaml，其结构分为三部分：
 1. 账户基础配置 (account) 用于设定回测的初始物理环境：
@@ -91,10 +92,10 @@ strategy:
     slow_period: 20  # 长期均线周期
 注意：同一时间只能保留一个活跃的 strategy 配置块，其余请使用 # 注释掉。修改保存后，直接在前端页面点击“执行回测”即可生效。
 
-注意事项
+# 注意事项
 防爬虫保护：首次添加新股票代码时，系统需要向云端发起网络请求。若请求频率过高可能会被数据提供方暂时封锁 IP。系统已内置随机休眠和重试机制，若控制台提示多次重试失败，请等待 15 分钟或切换网络后再试。
 
-系统交互指引
+# 系统交互指引
 大盘总览与区间选择
 在系统首页，你可以通过顶部的日期选择器设定全局回测区间。点击“执行回测”后，系统会自动拉取数据并展示股票池内所有标的在该区间的期末净值与收益率。
 ![alt text](image_3.png)
@@ -106,5 +107,5 @@ strategy:
 [此处插入：点击推演 30 天按钮后，图表出现买入卖出箭头和资金曲线变化的动图或两张前后对比截图]
 ![alt text](image_4.png)
 ![alt text](image_5.png)
-免责声明
+# 免责声明
 本项目仅供量化交易系统工程学的学习、研究与交流使用。系统内置的策略（如双均线、布林带等）均为教学演示模型，不构成任何投资建议。真实市场存在不可预测的风险，使用本系统产生的一切交易决策和资金盈亏，由使用者自行承担。
