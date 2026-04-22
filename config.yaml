@@ -1,0 +1,38 @@
+# 账户基础配置
+account:
+  initial_cash: 100000.0   # 初始本金 10万
+  commission_rate: 0.00025 # 券商佣金 万分之2.5
+  tax_rate: 0.0005         # 印花税 千分之0.5 (仅卖出收取)
+
+# 股票池 (支持随时增删)
+stock_pool:
+  # - sh600519  # 贵州茅台
+  - sz000858  # 五粮液
+  - sh601318  # 中国平安
+  - sh600036  # 招商银行
+
+# =================
+# 当前启用的量化策略 
+# =================
+
+# 1. 经典双均线策略
+strategy:
+  name: dual_ma
+  parameters:
+    fast_period: 5   # 短期均线
+    slow_period: 20  # 长期均线
+
+# 2. 布林带震荡策略
+# strategy:
+#   name: bollinger_bands
+#   parameters:
+#     window: 20
+#     std_dev: 2.0
+
+# 3. RSI 抄底逃顶策略
+# strategy:
+#   name: rsi_reversal
+#   parameters:
+#     window: 14
+#     buy_threshold: 30
+#     sell_threshold: 70
