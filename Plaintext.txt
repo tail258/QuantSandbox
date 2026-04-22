@@ -1,0 +1,34 @@
+quant_simulate_system/
+│
+├── data/                    # 运行时生成的数据目录
+│   ├── cache/               # akshare 下载的 K 线数据本地缓存 (CSV/Parquet)
+│   └── logs/                # 系统运行日志和回测输出日志
+│
+├── config/                  # 配置文件目录
+│   └── config.yaml          # 全局核心配置文件 (股票池、策略参数等)
+│
+├── backend/                 # Python 后端核心代码 (FastAPI + 回测引擎)
+│   ├── api/                 # FastAPI 路由层 (对接前端)
+│   │   ├── __init__.py
+│   │   ├── endpoints.py     # API 接口 (总览查询、详情查询)
+│   │   └── schemas.py       # Pydantic 数据模型 (定义前后端交互 JSON 格式)
+│   │
+│   ├── core/                # 量化回测核心逻辑层
+│   │   ├── __init__.py
+│   │   ├── engine.py        # 核心引擎 (信号生成与订单撮合)
+│   │   ├── data_center.py   # 数据中心 (负责调用 akshare 并管理本地缓存)
+│   │   └── strategy.py      # 策略基类和具体策略实现
+│   │
+│   └── main.py              # FastAPI 启动入口
+│
+├── frontend/                # Vue3/React 前端工程
+│
+├── requirements.txt         # Python 依赖清单
+└── README.md                # 项目说明文档
+
+使用：
+根目录 quant_simulate_system 
+分别打开两个终端
+先输入 uvicorn backend.main:app --reload
+再输入 npm run dev --prefix frontend
+打开链接 http://localhost:5173/
