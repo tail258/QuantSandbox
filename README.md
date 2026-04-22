@@ -21,24 +21,8 @@ Quant Simulate System (A 股量化回测与时空推演沙盘)
 
 数据存储：Parquet (本地二进制缓存)
 
-目录结构
-Plaintext
-quant_simulate_system/
-├── backend/                  # Python 后端服务
-│   ├── core/                 # 核心计算引擎
-│   │   ├── data_center.py    # 数据获取与缓存管理
-│   │   ├── engine.py         # 交易撮合与指标计算
-│   │   └── strategy.py       # 策略路由与算法实现
-│   └── main.py               # FastAPI 接口路由
-├── frontend/                 # Vue 3 前端工程
-│   ├── src/
-│   │   ├── api/              # Axios 请求封装
-│   │   ├── views/            # 页面组件 (Dashboard, Detail)
-│   │   └── ...
-│   └── package.json          
-├── data/
-│   └── cache/                # 自动生成的 Parquet 缓存文件存放地
-└── config.yaml               # 全局核心配置文件
+<img width="528" height="350" alt="image" src="https://github.com/user-attachments/assets/9f0cb141-f641-4a6a-a2df-c05ee94afe2b" />
+
 环境安装与运行指南
 本项目需要你具备基本的 Python 和 Node.js 运行环境。
 
