@@ -1,5 +1,12 @@
 {
-  "dependencies": {
-    "dayjs": "^1.11.20"
-  }
+  "name": "quantsandbox-workspace",
+  "private": true,
+  "version": "2.0.0",
+  "scripts": {
+    "dev": "pwsh -NoProfile -File scripts/dev.ps1",
+    "setup": "pwsh -NoProfile -File scripts/setup.ps1",
+    "check": "pwsh -NoProfile -File scripts/check.ps1",
+    "build": "npm run build --prefix frontend"
+  },
+  "engines": { "node": ">=22.12.0" }
 }
