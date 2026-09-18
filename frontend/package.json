@@ -1,24 +1,25 @@
 {
-  "name": "frontend",
+  "name": "quantsandbox-workbench",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vue-tsc --noEmit && vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "format": "prettier --write src vite.config.ts tsconfig.json index.html",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@element-plus/icons-vue": "^2.3.2",
-    "axios": "^1.15.1",
-    "element-plus": "^2.13.7",
-    "lightweight-charts": "^4.2.3",
-    "pinia": "^3.0.4",
+    "lightweight-charts": "^5.2.1",
     "vue": "^3.5.32",
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.6",
-    "vite": "^8.0.9"
+    "prettier": "^3.9.8",
+    "typescript": "~5.9.3",
+    "vite": "^8.0.16",
+    "vue-tsc": "^3.3.11"
   }
 }

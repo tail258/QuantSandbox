@@ -1,17 +1,35 @@
 # 1. Python 依赖与缓存
 venv/
+.venv/
 __pycache__/
 *.pyc
 .pytest_cache/
 
 # 2. 前端 Node 依赖与打包文件
 frontend/node_modules/
+node_modules/
 frontend/dist/
 npm-debug.log*
 
 # 3. 本地产生的大型数据文件
 data/cache/
+data/runtime/
+data/datasets/
+data/results/
+data/snapshots/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
 *.parquet
+.env
+.env.*
+!.env.example
+.ruff_cache/
+.coverage
+htmlcov/
+test-results/
+playwright-report/
+.local/
 
 # 4. 编辑器与系统配置
 .vscode/

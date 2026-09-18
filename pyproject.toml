@@ -1,0 +1,14 @@
+[project]
+name = "quantsandbox"
+version = "2.0.0"
+description = "A reproducible local quantitative research and historical replay workbench"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
