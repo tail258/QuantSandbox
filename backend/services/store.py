@@ -79,14 +79,20 @@ class Store:
 
     def list_runs(self, limit=100) -> list[dict]:
         with self.connect() as connection:
-            rows = connection.execute("SELECT * FROM runs ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+            # Extract only the small summary in SQLite. Large bars, fills and
+            # checkpoints never cross the SQLite/Python boundary for this view.
+            # json_type distinguishes an explicit null metrics value from a
+            # missing key, matching dict.get('metrics', baseline) exactly.
+            rows = connection.execute("""SELECT id,name,status,progress,created_at,updated_at,
+                config,kind,parent_id,branch,manifest,error,
+                CASE WHEN json_type(result, '$.metrics') IS NOT NULL
+                     THEN json_quote(json_extract(result, '$.metrics'))
+                     ELSE json_quote(json_extract(result, '$.baseline')) END AS metrics
+                FROM runs ORDER BY created_at DESC LIMIT ?""", (limit,)).fetchall()
         results = []
         for row in rows:
             decoded = self._decode(row)
-            result = decoded.pop("result", None)
-            decoded["metrics"] = (result or {}).get("metrics", (result or {}).get("baseline"))
-            decoded.pop("expected_result", None)
-            decoded.pop("experiment", None)
+            decoded["metrics"] = json.loads(decoded["metrics"])
             results.append(decoded)
         return results
 

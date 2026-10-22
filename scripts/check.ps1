@@ -6,6 +6,8 @@ Push-Location $workspaceRoot
 try {
     & ./.venv/Scripts/python.exe -X utf8 -m pytest
     if ($LASTEXITCODE -ne 0) { throw 'Backend checks failed.' }
+    & npm.cmd test --prefix frontend
+    if ($LASTEXITCODE -ne 0) { throw 'Frontend tests failed.' }
     & npm.cmd run build --prefix frontend
     if ($LASTEXITCODE -ne 0) { throw 'Frontend checks failed.' }
 } finally { Pop-Location }

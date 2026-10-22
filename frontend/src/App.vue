@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import Icon from './components/Icon.vue'
 import RunComposer from './components/RunComposer.vue'
-import { workspace, initialize, sourceLabel } from './workspace/store'
+import { workspace, initialize, disposeWorkspace, sourceLabel } from './workspace/store'
 const route = useRoute(),
   mobileOpen = ref(false)
 const navigation = [
@@ -14,6 +14,7 @@ const navigation = [
   { path: '/archive', label: '研究档案', icon: 'book' },
 ]
 onMounted(initialize)
+onUnmounted(disposeWorkspace)
 </script>
 <template>
   <div class="workspace-shell">

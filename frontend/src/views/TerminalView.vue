@@ -14,13 +14,14 @@ import {
   tickerName,
   runMetrics,
   chooseRun,
+  createExample,
   exportRun,
   createBranch,
   startSession,
   revealSession,
 } from '../workspace/store'
 import { money, percent, signClass } from '../utils/format'
-import type { Metrics, Trade, Run } from '../types'
+import type { Metrics, Trade, RunSummary } from '../types'
 const ticker = ref(''),
   tab = ref('chart'),
   selectedTrade = ref<Trade | null>(null),
@@ -88,7 +89,7 @@ const related = computed(() => {
     .slice(0, 4)
     .reverse()
 })
-function forkPosition(run: Run) {
+function forkPosition(run: RunSummary) {
   const start = Date.parse(run.config.start_date)
   const end = Date.parse(run.config.end_date)
   const fork = Date.parse(run.branch?.fork_date || run.config.start_date)
@@ -369,7 +370,13 @@ async function reveal() {
         :disabled="!workspace.catalog"
         @click="workspace.createOpen = true"
       >
-        新建回测
+        新建回测</button
+      ><button
+        class="button secondary"
+        :disabled="!workspace.catalog || workspace.busy"
+        @click="createExample().catch(() => {})"
+      >
+        运行合成数据示例
       </button></EmptyState
     >
   </div>

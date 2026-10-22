@@ -45,7 +45,7 @@ def test_catalog_validation_and_explicit_data_source_errors(client, monkeypatch)
     assert client.post("/api/runs", json={"strategy": {"name": "dual_ma", "parameters": None}}).status_code == 422
     assert client.post("/api/runs", json={"strategy": {"name": [], "parameters": {}}}).status_code == 422
     assert client.post("/api/runs", json={"tickers": ["999999"]}).status_code == 422
-    monkeypatch.setattr("backend.main.importlib.util.find_spec", lambda _: None)
+    monkeypatch.setattr("backend.services.research.importlib.util.find_spec", lambda _: None)
     response = client.post("/api/runs", json={"source": "akshare"})
     assert response.status_code == 503
     assert "演示" in response.json()["detail"]

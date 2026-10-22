@@ -6,13 +6,15 @@ import importlib.util
 import json
 import os
 import re
-import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 import pandas as pd
+
+from backend.core.data_format import (COLUMNS, DataUnavailable, utc_now, canonical_json,
+                                      frame_records, frame_hash, atomic_json, atomic_parquet, validate_frame)
+from backend.core.providers import MarketDataProvider, download_prices
+from backend.core.snapshots import SnapshotStore
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEMO_START = "2019-01-01"
@@ -27,61 +29,10 @@ UNIVERSE = [
     {"ticker": "600036", "name": "招商银行", "sector": "金融", "demo_name": "金融样例 B"},
     {"ticker": "601318", "name": "中国平安", "sector": "保险", "demo_name": "保险样例"},
 ]
-COLUMNS = ["date", "open", "high", "low", "close", "volume"]
-
-
-class DataUnavailable(RuntimeError):
-    """An explicit data-source failure, never silently replaced by demo data."""
-
-
-def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def data_root() -> Path:
     return Path(os.environ.get("QUANT_SANDBOX_DATA_DIR", str(PROJECT_ROOT / "data"))).resolve()
-
-
-def canonical_json(value) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
-
-
-def frame_records(frame: pd.DataFrame) -> list[dict]:
-    output = frame[COLUMNS].copy()
-    output["date"] = pd.to_datetime(output["date"]).dt.strftime("%Y-%m-%d")
-    # Python's float repr preserves the exact round-trip value; pandas.to_json
-    # truncates precision and can change an execution at a lot-size boundary.
-    return output.to_dict(orient="records")
-
-
-def frame_hash(frame: pd.DataFrame) -> str:
-    return hashlib.sha256(canonical_json(frame_records(frame)).encode("utf-8")).hexdigest()
-
-
-def atomic_json(path: Path, content) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp = tempfile.mkstemp(prefix=f".{path.stem}-", suffix=".tmp", dir=path.parent)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(canonical_json(content))
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temp, path)
-    finally:
-        if os.path.exists(temp):
-            os.unlink(temp)
-
-
-def atomic_parquet(path: Path, frame: pd.DataFrame) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp = tempfile.mkstemp(prefix=f".{path.stem}-", suffix=".parquet", dir=path.parent)
-    os.close(fd)
-    try:
-        frame.to_parquet(temp, index=False)
-        os.replace(temp, path)
-    finally:
-        if os.path.exists(temp):
-            os.unlink(temp)
 
 
 def normalize_ticker(symbol: str) -> str:
@@ -89,29 +40,6 @@ def normalize_ticker(symbol: str) -> str:
     if not re.fullmatch(r"\d{6}", symbol):
         raise ValueError("股票代码必须为六位数字")
     return symbol
-
-
-def validate_frame(frame: pd.DataFrame, allow_empty: bool = False) -> pd.DataFrame:
-    if frame.empty:
-        if allow_empty:
-            return pd.DataFrame(columns=COLUMNS)
-        raise DataUnavailable("请求范围内没有行情，请检查上市日期、停牌情况或数据源。")
-    missing = set(COLUMNS) - set(frame.columns)
-    if missing:
-        raise DataUnavailable(f"行情字段缺失：{', '.join(sorted(missing))}")
-    result = frame[COLUMNS].copy()
-    result["date"] = pd.to_datetime(result["date"], errors="raise").dt.normalize()
-    for column in COLUMNS[1:]:
-        result[column] = pd.to_numeric(result[column], errors="raise")
-    values = result[COLUMNS[1:]].to_numpy(dtype=float)
-    if not np.isfinite(values).all():
-        raise DataUnavailable("行情包含缺失值或非有限数值")
-    if (result[["open", "high", "low", "close"]] <= 0).any().any() or (result["volume"] < 0).any():
-        raise DataUnavailable("行情价格或成交量不合法")
-    if ((result["high"] < result[["open", "close", "low"]].max(axis=1)) |
-            (result["low"] > result[["open", "close", "high"]].min(axis=1))).any():
-        raise DataUnavailable("行情最高价/最低价与开收盘价不一致")
-    return result.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
 
 
 def synthetic_frame(ticker: str) -> pd.DataFrame:
@@ -141,7 +69,7 @@ def synthetic_frame(ticker: str) -> pd.DataFrame:
 
 class DataCenter:
     def __init__(self, cache_dir: str | Path | None = None,
-                 provider: Callable | None = None, root: str | Path | None = None):
+                 provider: MarketDataProvider | None = None, root: str | Path | None = None):
         self.root = Path(root).resolve() if root else data_root()
         self.cache_dir = Path(cache_dir).resolve() if cache_dir else self.root / "cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -150,25 +78,7 @@ class DataCenter:
         self.provider = provider
 
     def _download(self, ticker: str, start: str, end: str) -> pd.DataFrame:
-        try:
-            if self.provider:
-                raw = self.provider(ticker, start, end)
-            else:
-                try:
-                    import akshare as ak
-                except ImportError as exc:
-                    raise DataUnavailable("AKShare 未安装。请安装 requirements-market.txt 后重新请求真实行情。") from exc
-                raw = ak.stock_zh_a_hist(symbol=ticker, period="daily", start_date=start.replace("-", ""),
-                                         end_date=end.replace("-", ""), adjust="", timeout=20)
-            renamed = raw.rename(columns={"日期": "date", "开盘": "open", "最高": "high",
-                                          "最低": "low", "收盘": "close", "成交量": "volume"})
-            if "成交量" in raw.columns:
-                renamed["volume"] = pd.to_numeric(renamed["volume"]) * 100
-            return validate_frame(renamed, allow_empty=True)
-        except DataUnavailable:
-            raise
-        except Exception as exc:
-            raise DataUnavailable(f"AKShare 获取 {ticker} 失败：{type(exc).__name__}: {exc}") from exc
+        return download_prices(ticker, start, end, self.provider)
 
     def fetch_stock_data(self, symbol: str, start_date="20240101", end_date="20251231",
                          force_update=False, source="akshare") -> pd.DataFrame:
@@ -232,40 +142,14 @@ class DataCenter:
         return validate_frame(selected)
 
     def snapshot(self, ticker: str, frame: pd.DataFrame, source: str) -> dict:
-        frame = validate_frame(frame)
-        digest = frame_hash(frame)
-        file = self.snapshots / f"{digest}.parquet"
-        if not file.exists():
-            atomic_parquet(file, frame)
-        manifest = {"ticker": ticker, "source": source, "synthetic": source == "demo", "sha256": digest,
-                    "file_sha256": hashlib.sha256(file.read_bytes()).hexdigest(), "rows": len(frame),
-                    "start_date": str(frame.date.min().date()), "end_date": str(frame.date.max().date()),
-                    "created_at": utc_now(), "volume_unit": "shares",
-                    "version": DEMO_VERSION if source == "demo" else "akshare-raw-v1",
-                    "price_basis": "synthetic" if source == "demo" else "raw_unadjusted",
-                    "notice": DEMO_NOTICE if source == "demo" else "未复权价格；当前模型未记账分红送转。"}
-        atomic_json(self.snapshots / f"{digest}.json", manifest)
-        return manifest
+        return SnapshotStore(self.snapshots).snapshot(ticker, frame, source,
+                                                     demo_version=DEMO_VERSION, demo_notice=DEMO_NOTICE)
 
     def load_snapshot(self, manifest: dict) -> pd.DataFrame:
-        digest = manifest.get("sha256", "")
-        if not re.fullmatch(r"[a-f0-9]{64}", digest):
-            raise DataUnavailable("数据版本指纹无效")
-        file = self.snapshots / f"{digest}.parquet"
-        if not file.exists():
-            raise DataUnavailable("研究数据快照缺失，请导入完整研究证据包")
-        frame = validate_frame(pd.read_parquet(file))
-        if frame_hash(frame) != digest:
-            raise DataUnavailable("研究数据快照 SHA256 校验失败")
-        return frame
+        return SnapshotStore(self.snapshots).load_snapshot(manifest)
 
     def status(self) -> dict:
-        datasets = []
-        for path in self.snapshots.glob("*.json"):
-            try:
-                datasets.append(json.loads(path.read_text(encoding="utf-8")))
-            except (ValueError, OSError):
-                continue
+        datasets = SnapshotStore(self.snapshots).manifests()
         return {"datasets": sorted(datasets, key=lambda row: row["created_at"], reverse=True),
                 "sources": [{"id": "demo", "name": "合成演示行情", "available": True, "synthetic": True,
                              "notice": DEMO_NOTICE, "start_date": DEMO_START, "end_date": DEMO_END},

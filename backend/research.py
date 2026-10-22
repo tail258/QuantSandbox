@@ -2,11 +2,36 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from collections.abc import Callable
 import pandas as pd
 
 from backend.core.engine import ACCOUNT_DEFAULTS, calculate_metrics, run_backtest
 
-__all__ = ["run_backtest", "calculate_metrics", "run_stress_suite", "run_walk_forward"]
+__all__ = ["run_backtest", "calculate_metrics", "run_stress_suite", "run_walk_forward", "run_parameter_suite"]
+
+
+def run_parameter_suite(frames: dict[str, pd.DataFrame], config: dict, options: dict,
+                        on_progress: Callable[[int], None] | None = None) -> dict:
+    """Compare validated parameter candidates using one immutable input dataset."""
+    from backend.api.schemas import StrategyConfig
+
+    values = options["values"]
+    if not values:
+        raise ValueError("参数实验至少需要一个有效候选值")
+    baseline = run_backtest(frames, config)
+    variants = []
+    for index, value in enumerate(values):
+        changed = deepcopy(config)
+        changed["strategy"]["parameters"][options["parameter"]] = value
+        StrategyConfig.model_validate(changed["strategy"])
+        variant = run_backtest(frames, changed)
+        variants.append({"value": value, "metrics": variant["metrics"]})
+        if on_progress:
+            on_progress(int(100 * (index + 1) / len(values)))
+    best = max(variants, key=lambda item: item["metrics"]["total_return"])
+    return {"parameter": options["parameter"], "baseline": baseline["metrics"], "variants": variants,
+            "best_value": best["value"],
+            "notice": "同区间参数敏感性研究；最佳值未经样本外验证，不构成选参结论。"}
 
 
 def run_stress_suite(frames: dict[str, pd.DataFrame], config: dict) -> dict:

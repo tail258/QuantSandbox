@@ -5,6 +5,7 @@ from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from backend.core.strategy_catalog import canonical_name, normalize_parameters, strategy_defaults
 
 
 class StrictModel(BaseModel):
@@ -13,7 +14,7 @@ class StrictModel(BaseModel):
 
 class StrategyConfig(StrictModel):
     name: Literal["dual_ma", "rsi_reversal", "momentum", "bollinger_bands"] = "dual_ma"
-    parameters: dict[str, float | int] = Field(default_factory=lambda: {"fast_period": 5, "slow_period": 20})
+    parameters: dict[str, float | int] = Field(default_factory=lambda: strategy_defaults("dual_ma"))
 
     @model_validator(mode="before")
     @classmethod
@@ -22,21 +23,16 @@ class StrategyConfig(StrictModel):
             values = dict(values)
             if not isinstance(values.get("name", "dual_ma"), str):
                 raise ValueError("策略名称必须为字符串")
-            values["name"] = {"sma_cross": "dual_ma", "rsi_reversion": "rsi_reversal"}.get(values.get("name"), values.get("name", "dual_ma"))
+            values["name"] = canonical_name(values.get("name", "dual_ma"))
             params = values.get("parameters", {})
             if not isinstance(params, dict):
                 raise ValueError("策略参数必须为键值对象")
-            aliases = {"fast": "fast_period", "slow": "slow_period", "lookback": "window", "period": "window",
-                       "oversold": "buy_threshold", "overbought": "sell_threshold"}
-            defaults = {"dual_ma": {"fast_period": 5, "slow_period": 20}, "rsi_reversal": {"window": 14, "buy_threshold": 30, "sell_threshold": 70},
-                        "bollinger_bands": {"window": 20, "std_dev": 2}, "momentum": {"window": 20, "threshold": .02}}
-            values["parameters"] = {**defaults.get(values["name"], {}), **{aliases.get(key, key): value for key, value in params.items()}}
+            values["parameters"] = {**strategy_defaults(values["name"]), **normalize_parameters(params)}
         return values
 
     @model_validator(mode="after")
     def parameter_bounds(self):
-        permitted = {"dual_ma": {"fast_period", "slow_period"}, "rsi_reversal": {"window", "buy_threshold", "sell_threshold"},
-                     "momentum": {"window", "threshold"}, "bollinger_bands": {"window", "std_dev"}}[self.name]
+        permitted = strategy_defaults(self.name).keys()
         if self.parameters.keys() - permitted:
             raise ValueError(f"{self.name} 不支持参数 {sorted(self.parameters.keys() - permitted)}")
         for key, value in self.parameters.items():

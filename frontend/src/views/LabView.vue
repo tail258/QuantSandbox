@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { request, post } from '../api/http'
 import { workspace, pollRun, refreshRuns, exportRun } from '../workspace/store'
+import { cancelPolling } from '../workspace/polling'
 import type { Run } from '../types'
 import { percent, signClass, dateLabel } from '../utils/format'
 import Icon from '../components/Icon.vue'
@@ -27,8 +28,12 @@ const parameters = computed(
       (strategy) => strategy.name === parent.value?.config.strategy.name,
     )?.parameters || [],
 )
-const variants = computed(
-  () => experiment.value?.result?.scenarios || experiment.value?.result?.variants || [],
+const variants = computed(() =>
+  experiment.value?.kind === 'pressure'
+    ? experiment.value.result?.scenarios || []
+    : experiment.value?.kind === 'parameter'
+      ? experiment.value.result?.variants || []
+      : [],
 )
 const maxReturn = computed(() =>
   Math.max(1, ...variants.value.map((variant) => Math.abs(variant.metrics.total_return || 0))),
@@ -82,18 +87,27 @@ watch(
   },
   { immediate: true },
 )
+let loadVersion = 0
+onUnmounted(() => {
+  loadVersion++
+  if (experiment.value) cancelPolling(experiment.value.id)
+})
 async function load(id: string) {
+  const version = ++loadVersion
   try {
-    experiment.value = await request<Run>(`/runs/${id}`)
+    const loaded = await request<Run>(`/runs/${id}`)
+    if (version !== loadVersion) return
+    experiment.value = loaded
     kind.value = experiment.value.kind
   } catch (err) {
-    error.value = (err as Error).message
+    if (version === loadVersion) error.value = (err as Error).message
   }
 }
 onMounted(() => {
   if (typeof route.query.run === 'string') void load(route.query.run)
 })
 async function run() {
+  const version = ++loadVersion
   error.value = ''
   busy.value = true
   try {
@@ -113,13 +127,15 @@ async function run() {
       body.test_days = testing.value
     }
     const task = await post<Run>(`/runs/${parentId.value}/experiments`, body)
+    if (version !== loadVersion) return
     experiment.value = task
     await refreshRuns()
-    experiment.value = await pollRun(task.id)
+    const completed = await pollRun(task.id)
+    if (version === loadVersion) experiment.value = completed
   } catch (err) {
-    error.value = (err as Error).message
+    if (version === loadVersion) error.value = (err as Error).message
   } finally {
-    busy.value = false
+    if (version === loadVersion) busy.value = false
   }
 }
 </script>
@@ -213,7 +229,8 @@ async function run() {
             <div v-for="(variant, index) in variants" :key="index" class="experiment-row">
               <div class="experiment-name">
                 <strong>{{
-                  variant.name || `${experiment.result?.parameter} = ${variant.value}`
+                  variant.name ||
+                  `${experiment.kind === 'parameter' ? experiment.result?.parameter : ''} = ${variant.value}`
                 }}</strong
                 ><span :class="signClass(variant.metrics.total_return)">{{
                   percent(variant.metrics.total_return)
@@ -233,7 +250,7 @@ async function run() {
               </div>
             </div>
           </div>
-          <template v-if="experiment.result?.folds"
+          <template v-if="experiment.kind === 'walk_forward' && experiment.result"
             ><div class="wf-summary">
               <div>
                 <span>样本外收益</span
