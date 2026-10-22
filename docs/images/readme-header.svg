@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" fill="none">
+  <title>QuantSandbox — 本地量化研究工作台</title>
+  <desc>深色品牌页眉，以分叉轨迹表达策略回放与对照研究。</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" stroke="#252D3C" stroke-opacity=".42"/>
+    </pattern>
+    <linearGradient id="fade" x1="690" y1="180" x2="1250" y2="180" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8EA9FF" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#8EA9FF" stop-opacity=".8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="360" rx="20" fill="#10141D"/>
+  <rect x="680" y="20" width="580" height="320" fill="url(#grid)"/>
+  <path d="M707 222H795L843 183H913L956 137H1018L1060 96H1188" stroke="url(#fade)" stroke-width="3"/>
+  <path d="M913 183H975L1024 222H1103L1142 190H1215" stroke="#60C4A4" stroke-width="2" stroke-opacity=".7"/>
+  <path d="M913 183H955L1006 268H1153" stroke="#75839C" stroke-width="2" stroke-dasharray="5 7" stroke-opacity=".55"/>
+  <circle cx="913" cy="183" r="20" fill="#8EA9FF" fill-opacity=".08"/>
+  <circle cx="913" cy="183" r="7" fill="#10141D" stroke="#8EA9FF" stroke-width="3"/>
+  <circle cx="1188" cy="96" r="5" fill="#8EA9FF"/>
+  <circle cx="1215" cy="190" r="5" fill="#60C4A4"/>
+  <circle cx="1153" cy="268" r="4" fill="#75839C"/>
+  <g transform="translate(58 55) scale(1.3)" stroke="#8EA9FF" stroke-width="5">
+    <path d="M11 5a12 12 0 0 1 10 0M25 10a12 12 0 0 1 0 12M21 27a12 12 0 0 1-10 0M6 22a12 12 0 0 1 0-12"/>
+  </g>
+  <g font-family="Segoe UI, Inter, Arial, sans-serif">
+    <text x="114" y="82" font-size="13" letter-spacing="3" fill="#9BA9C3">LOCAL QUANT RESEARCH</text>
+    <text x="60" y="165" font-size="61" font-weight="650" letter-spacing="-2" fill="#EEF2FA">QuantSandbox</text>
+    <text x="63" y="214" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="23" fill="#B9C5DA">本地量化研究工作台</text>
+    <path d="M63 251H650" stroke="#2A3344"/>
+    <text x="63" y="288" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" letter-spacing="2" fill="#8EA9FF">策略回测</text>
+    <text x="199" y="288" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" letter-spacing="2" fill="#A4B1CA">历史分叉</text>
+    <text x="335" y="288" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" letter-spacing="2" fill="#A4B1CA">稳健性实验</text>
+    <text x="490" y="288" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" letter-spacing="2" fill="#60C4A4">证据重放</text>
+  </g>
+</svg>
