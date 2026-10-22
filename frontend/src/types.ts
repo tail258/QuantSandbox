@@ -129,40 +129,72 @@ export interface ExperimentVariant {
   delta_return?: number
   [key: string]: unknown
 }
-export interface Result {
+export interface ResultMetadata {
+  assumptions?: string[]
+  config?: RunConfig
+  replay_verification?: { matched?: boolean; [key: string]: unknown }
+}
+export interface SimulationResult extends ResultMetadata {
   metrics: Metrics
   series: EquityPoint[]
   bars: Record<string, Bar[]>
   trades: Trade[]
   decisions: Decision[]
   checkpoints?: unknown[]
-  assumptions?: string[]
-  config?: RunConfig
-  baseline?: Metrics
-  scenarios?: ExperimentVariant[]
-  variants?: ExperimentVariant[]
-  parameter?: string
-  best_value?: number
-  folds?: Record<string, unknown>[]
-  replay_verification?: Record<string, unknown>
-  [key: string]: unknown
 }
-export interface Run {
+export interface PressureResult extends ResultMetadata {
+  kind: 'stress'
+  baseline: Metrics
+  scenarios: ExperimentVariant[]
+}
+export interface ParameterResult extends ResultMetadata {
+  baseline: Metrics
+  variants: ExperimentVariant[]
+  parameter: string
+  best_value: number
+}
+export interface WalkForwardResult extends ResultMetadata {
+  kind: 'walk_forward'
+  metrics: Metrics
+  series: EquityPoint[]
+  trades: Trade[]
+  folds: Record<string, unknown>[]
+}
+export type Result = SimulationResult | PressureResult | ParameterResult | WalkForwardResult
+interface RunBase {
   id: string
   name: string
-  status: string
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
   progress: number
   created_at: string
   updated_at: string
   config: RunConfig
-  kind: string
   parent_id: string | null
   branch?: { fork_date?: string }
-  result: Result | null
   error?: { code: string; message: string } | null
   synthetic: boolean
-  metrics?: Metrics
   manifest?: unknown[]
+}
+export type Run = RunBase &
+  (
+    | { kind: 'backtest' | 'branch'; result: SimulationResult | null }
+    | { kind: 'pressure'; result: PressureResult | null }
+    | { kind: 'parameter'; result: ParameterResult | null }
+    | { kind: 'walk_forward'; result: WalkForwardResult | null }
+  )
+export interface RunSummary extends RunBase {
+  kind: Run['kind']
+  metrics: Metrics | null
+}
+export interface RunList {
+  runs: RunSummary[]
+}
+export function toRunSummary(run: Run): RunSummary {
+  const { result, ...metadata } = run
+  return {
+    ...metadata,
+    metrics: result ? ('metrics' in result ? result.metrics : result.baseline) : null,
+  }
 }
 export interface ReplaySession {
   id: string
@@ -174,7 +206,7 @@ export interface ReplaySession {
   revealed_at: string | null
   source: string
   synthetic: boolean
-  result: Result
+  result: SimulationResult
 }
 export interface Dataset {
   ticker: string

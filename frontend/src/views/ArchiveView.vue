@@ -12,7 +12,7 @@ import {
   runMetrics,
 } from '../workspace/store'
 import { dateLabel, percent, signClass, statusLabel } from '../utils/format'
-import type { Note, Run } from '../types'
+import type { Note, Run, RunSummary } from '../types'
 import Icon from '../components/Icon.vue'
 import EmptyState from '../components/EmptyState.vue'
 const router = useRouter()
@@ -54,7 +54,7 @@ onMounted(() => {
     error.value = err.message
   })
 })
-async function open(run: Run) {
+async function open(run: RunSummary) {
   if (['backtest', 'branch'].includes(run.kind)) {
     await chooseRun(run.id)
     await router.push('/terminal')
@@ -102,7 +102,7 @@ async function importEvidence(event: Event) {
     if (fileInput.value) fileInput.value.value = ''
   }
 }
-async function cancel(run: Run) {
+async function cancel(run: RunSummary) {
   try {
     await post(`/runs/${run.id}/cancel`)
     await refreshRuns()

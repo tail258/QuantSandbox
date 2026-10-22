@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { workspace, chooseRun, runMetrics, refreshRuns } from '../workspace/store'
+import { workspace, createExample, chooseRun, runMetrics, refreshRuns } from '../workspace/store'
 import { dateLabel, percent, signClass, statusLabel } from '../utils/format'
 import Icon from '../components/Icon.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -46,6 +46,17 @@ async function open(id: string, kind: string) {
         </button>
       </div>
     </header>
+    <section v-if="workspace.initialized && !workspace.runs.length" class="panel form-body">
+      <h2>开始你的第一项研究</h2>
+      <p>新建回测选择数据与策略，或运行合成数据示例熟悉研究流程。</p>
+      <button
+        class="button secondary"
+        :disabled="workspace.busy"
+        @click="createExample().catch(() => {})"
+      >
+        运行合成数据示例
+      </button>
+    </section>
     <div class="metric-strip overview-metrics">
       <div class="metric">
         <span>已完成研究</span><strong>{{ completed.length }}<small>项</small></strong>

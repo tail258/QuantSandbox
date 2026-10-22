@@ -13,12 +13,12 @@ import numpy as np
 import pandas as pd
 
 from backend.core.strategy import StrategyFactory
+from backend.core.account import ACCOUNT_DEFAULTS, normalize_account as _account, AccountLedger
+from backend.core.metrics import calculate_metrics
+from backend.core.execution import execute_order
 
 ENGINE_VERSION = "2.0.0"
 INDICATORS = ("fast_ma", "slow_ma", "middle_band", "upper_band", "lower_band", "rsi", "momentum")
-ACCOUNT_DEFAULTS = {"initial_cash": 100000.0, "commission_rate": 0.00025,
-                    "tax_rate": 0.0005, "min_commission": 5.0, "slippage_bps": 5.0,
-                    "position_size": 0.3, "lot_size": 100, "execution_delay": 1}
 
 
 def _number(value, default=None):
@@ -30,26 +30,6 @@ def _number(value, default=None):
 
 def _date(value):
     return pd.Timestamp(value).strftime("%Y-%m-%d")
-
-
-def _account(config):
-    account = {**ACCOUNT_DEFAULTS, **config.get("account", {})}
-    for key in ACCOUNT_DEFAULTS:
-        value = account[key]
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
-            raise ValueError(f"账户参数 {key} 必须为有限数值")
-    if account["initial_cash"] <= 0 or not 0 <= account["position_size"] <= 1:
-        raise ValueError("初始资金必须为正数，单标的仓位须在 0–1 之间")
-    for key in ("commission_rate", "tax_rate"):
-        if not 0 <= account[key] <= 0.1:
-            raise ValueError(f"{key} 须在 0–0.1 之间")
-    if account["min_commission"] < 0 or not 0 <= account["slippage_bps"] <= 1000:
-        raise ValueError("最低佣金不能为负，滑点须在 0–1000 bps 之间")
-    for key in ("lot_size", "execution_delay"):
-        if account[key] < 1 or int(account[key]) != account[key]:
-            raise ValueError(f"{key} 必须为正整数")
-        account[key] = int(account[key])
-    return account
 
 
 def _prepare(frame):
@@ -70,45 +50,6 @@ def _prepare(frame):
     if ((out.high < out[["open", "close", "low"]].max(axis=1)) | (out.low > out[["open", "close", "high"]].min(axis=1))).any():
         raise ValueError("OHLC 高低价关系不合法")
     return out
-
-
-def calculate_metrics(series: list[dict], trades: list[dict], initial_cash: float) -> dict:
-    """Metrics for a visible prefix, including initial cash to the first close."""
-    equity = [float(initial_cash)] + [float(row["equity"]) for row in series]
-    final = equity[-1]
-    values = np.asarray(equity, dtype=float)
-    daily = values[1:] / values[:-1] - 1
-    peak = np.maximum.accumulate(values)
-    max_drawdown = float(np.min(values / peak - 1))
-    closes = [t for t in trades if t.get("round_trip_closed")]
-    pnl = [float(t.get("round_trip_pnl", t.get("realized_pnl", 0))) for t in closes]
-    wins = [p for p in pnl if p > 1e-8]
-    losses = [p for p in pnl if p < -1e-8]
-    stdev = float(np.std(daily, ddof=1)) if len(daily) > 1 else 0
-    years = len(daily) / 252
-    annual = 0.0
-    if years and final > 0:
-        exponent = math.log(final / initial_cash) / years
-        annual = math.expm1(exponent) if exponent < 700 else float("nan")
-    elif years:
-        annual = -1.0 if final == 0 else float("nan")
-    positions = series[-1].get("positions", {}) if series else {}
-    open_count = sum(int(p.get("shares", 0)) > 0 for p in positions.values())
-    benchmark_return = (series[-1].get("benchmark", initial_cash) / initial_cash - 1) * 100 if series else 0
-    return {"initial_cash": round(initial_cash, 2), "final_equity": round(final, 2),
-            "total_return": round((final / initial_cash - 1) * 100, 4),
-            "annualized_return": round(annual * 100, 4) if math.isfinite(annual) else None,
-            "max_drawdown": round(max_drawdown * 100, 4),
-            "sharpe_ratio": round(float(np.mean(daily)) / stdev * math.sqrt(252), 4) if stdev > 0 else 0,
-            "win_rate": round(len(wins) / len(pnl) * 100, 4) if pnl else 0,
-            "pnl_ratio": round(float(np.mean(wins)) / abs(float(np.mean(losses))), 4) if wins and losses else None,
-            "profit_factor": round(sum(wins) / abs(sum(losses)), 4) if losses else None,
-            "trade_count": len(trades), "closed_trade_count": len(closes), "round_trip_count": len(closes),
-            "open_position_count": open_count, "total_fees": round(sum(t["fee"] for t in trades), 2),
-            "realized_pnl": round(sum(t.get("realized_pnl", 0) for t in trades), 2),
-            "benchmark_return": round(benchmark_return, 4),
-            "excess_return": round((final / initial_cash - 1) * 100 - benchmark_return, 4),
-            "trading_days": len(series), "ending_cash": round(series[-1]["cash"], 2) if series else round(initial_cash, 2)}
 
 
 def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | None = None) -> dict:
@@ -199,11 +140,11 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
                                     "lookup": table, "rebalance": changed_account["position_size"] != before_account["position_size"]})
         current_policy, current_account = changed_policy, changed_account
     transitions.sort(key=lambda x: x["date"])
-    cash = float(account["initial_cash"])
-    initial = cash
-    previous_equity = cash
-    peak = cash
-    positions = {t: {"shares": 0, "cost_basis": 0.0, "entry_date": None, "cycle_pnl": 0.0} for t in tickers}
+    ledger = AccountLedger(account["initial_cash"], tickers)
+    initial = ledger.cash
+    previous_equity = ledger.cash
+    peak = ledger.cash
+    positions = ledger.positions
     last_close = {t: float(f.loc[f.date <= start, "close"].iloc[-1]) if (f.date <= start).any() else float(f.close.iloc[0]) for t, f in sources.items()}
     benchmark_entry = {}
     pending: dict[str, dict] = {}
@@ -263,64 +204,18 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
             order = pending[ticker]
             row = available[ticker]
             settings = order["settings"]
-            position = positions[ticker]
-            action = order["action"]
-            raw_price = float(row.open)
-            target_value = previous_equity * order["target_fraction"]
-            if action == "rebalance":
-                action = "sell" if position["shares"] * raw_price > target_value else "buy"
-            blocked = row.volume <= 0 or bool(row.get("is_suspended", False))
-            if action == "buy" and _number(row.get("limit_up")) is not None:
-                blocked = blocked or raw_price >= float(row.limit_up) - 1e-8
-            if action == "sell" and _number(row.get("limit_down")) is not None:
-                blocked = blocked or raw_price <= float(row.limit_down) + 1e-8
-            if blocked:
+            fill = execute_order(ledger, ticker, day, row, order, previous_equity)
+            action = fill["action"]
+            if fill["status"] == "deferred":
                 decisions.append({"id": f"decision-{len(decisions)+1:05d}", "date": _date(day), "ticker": ticker,
                                   "action": action, "status": "deferred", "reason": "停牌、零成交量或显式涨跌停限制，订单顺延",
                                   "evidence": deepcopy(order["evidence"])})
                 continue
-            price = raw_price * (1 + settings["slippage_bps"] / 10000 * (1 if action == "buy" else -1))
-            lot = settings["lot_size"]
-            realized = 0.0
-            closed = False
-            cycle_pnl = 0.0
-            if action == "buy":
-                budget = min(cash, max(0, target_value - position["shares"] * raw_price))
-                qty = int(budget / (price * (1 + settings["commission_rate"])) // lot) * lot
-                while qty and qty * price + max(settings["min_commission"], qty * price * settings["commission_rate"]) > budget + 1e-8:
-                    qty -= lot
-                if qty:
-                    value = qty * price
-                    fee = max(settings["min_commission"], value * settings["commission_rate"])
-                    cash -= value + fee
-                    if not position["shares"]:
-                        position["entry_date"] = _date(day)
-                        position["cycle_pnl"] = 0.0
-                    position["shares"] += qty
-                    position["cost_basis"] += value + fee
-                    position["last_buy_date"] = _date(day)
-            else:
-                if position.get("last_buy_date") == _date(day):
-                    continue
-                if order["action"] == "rebalance":
-                    keep = int(target_value / raw_price // lot) * lot
-                    qty = max(0, position["shares"] - keep)
-                else:
-                    qty = position["shares"]
-                if qty:
-                    value = qty * price
-                    fee = max(settings["min_commission"], value * settings["commission_rate"]) + value * settings["tax_rate"]
-                    removed_basis = position["cost_basis"] * qty / position["shares"]
-                    realized = value - fee - removed_basis
-                    cash += value - fee
-                    position["cost_basis"] -= removed_basis
-                    position["shares"] -= qty
-                    position["cycle_pnl"] += realized
-                    if not position["shares"]:
-                        closed = True
-                        cycle_pnl = position["cycle_pnl"]
-                        position["cost_basis"] = 0.0
-                        position["entry_date"] = None
+            if fill["status"] == "t_plus_one":
+                continue
+            raw_price, price, qty = fill["raw_price"], fill["price"], fill["qty"]
+            value, fee, realized = fill["value"], fill["fee"], fill["realized"]
+            closed, cycle_pnl = fill["closed"], fill["cycle_pnl"]
             del pending[ticker]
             if qty:
                 trade_ev = deepcopy(order["evidence"])
@@ -328,7 +223,7 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
                                  "execution_delay_bars": settings["execution_delay"],
                                  "commission_rate": settings["commission_rate"], "min_commission": settings["min_commission"],
                                  "tax_rate": settings["tax_rate"] if action == "sell" else 0,
-                                 "cash_after": round(cash, 6), "target_fraction": order["target_fraction"]})
+                                 "cash_after": round(ledger.cash, 6), "target_fraction": order["target_fraction"]})
                 trades.append({"id": f"trade-{len(trades)+1:05d}", "date": _date(day), "ticker": ticker,
                                "action": action, "price": round(price, 6), "shares": int(qty), "fee": round(fee, 6),
                                "value": round(value, 6), "reason": order["reason"], "signal_date": order["signal_date"],
@@ -341,14 +236,14 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
         for ticker, row in available.items():
             last_close[ticker] = float(row.close)
             benchmark_entry.setdefault(ticker, float(row.open))
-        equity = cash + sum(p["shares"] * last_close[t] for t, p in positions.items())
+        equity = ledger.cash + sum(p["shares"] * last_close[t] for t, p in positions.items())
         peak = max(peak, equity)
         snapshot_positions = {t: {"shares": p["shares"], "cost_basis": round(p["cost_basis"], 6),
                                   "market_value": round(p["shares"] * last_close[t], 6),
                                   "unrealized_pnl": round(p["shares"] * last_close[t] - p["cost_basis"], 6),
                                   "entry_date": p["entry_date"]} for t, p in positions.items()}
         benchmark = initial / len(tickers) * sum(last_close[t] / benchmark_entry[t] if t in benchmark_entry else 1 for t in tickers)
-        series.append({"date": _date(day), "equity": round(equity, 6), "cash": round(cash, 6),
+        series.append({"date": _date(day), "equity": round(equity, 6), "cash": round(ledger.cash, 6),
                        "drawdown": round((equity / peak - 1) * 100, 6), "benchmark": round(benchmark, 6),
                        "daily_return": round((equity / previous_equity - 1) * 100, 6), "positions": snapshot_positions})
         eligible = [item for item in transitions if item["date"] <= day]
@@ -361,7 +256,7 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
         for ticker in available:
             row = transition["lookup"][ticker].loc[day] if transition else available[ticker]
             decide(ticker, day, row, policy, settings, rebalance=bool(changing and transition["rebalance"]))
-        checkpoints.append({"date": _date(day), "cash": round(cash, 6), "equity": round(equity, 6),
+        checkpoints.append({"date": _date(day), "cash": round(ledger.cash, 6), "equity": round(equity, 6),
                             "positions": deepcopy(snapshot_positions), "pending_orders": deepcopy(list(pending.values()))})
         previous_equity = equity
     bars = {}

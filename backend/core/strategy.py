@@ -3,23 +3,19 @@ from __future__ import annotations
 
 import math
 import pandas as pd
+from backend.core.strategy_catalog import DEFAULTS, NAME_ALIASES, canonical_name, normalize_parameters, strategy_defaults
 
 
 class StrategyFactory:
-    NAMES = ("dual_ma", "bollinger_bands", "rsi_reversal", "momentum", "sma_cross", "rsi_reversion")
+    NAMES = (*DEFAULTS, *NAME_ALIASES)
 
     @staticmethod
     def generate_signals(df: pd.DataFrame, strategy_name: str, params: dict | None = None) -> pd.DataFrame:
         params = params or {}
         if strategy_name not in StrategyFactory.NAMES:
             raise ValueError(f"未知策略：{strategy_name}")
-        strategy_name = {"sma_cross": "dual_ma", "rsi_reversion": "rsi_reversal"}.get(strategy_name, strategy_name)
-        params = dict(params)
-        aliases = {"fast": "fast_period", "slow": "slow_period", "period": "window", "lookback": "window",
-                   "oversold": "buy_threshold", "overbought": "sell_threshold"}
-        for alias, canonical in aliases.items():
-            if alias in params and canonical not in params:
-                params[canonical] = params[alias]
+        strategy_name = canonical_name(strategy_name)
+        params = {**strategy_defaults(strategy_name), **normalize_parameters(params, canonical_wins=True)}
         out = df.copy()
         out["trade_signal"] = 0
         return getattr(StrategyFactory, f"_{strategy_name}")(out, params)
@@ -33,8 +29,8 @@ class StrategyFactory:
 
     @staticmethod
     def _dual_ma(df, params):
-        fast = StrategyFactory._period(params, "fast_period", 5)
-        slow = StrategyFactory._period(params, "slow_period", 20)
+        fast = StrategyFactory._period(params, "fast_period", DEFAULTS["dual_ma"]["fast_period"])
+        slow = StrategyFactory._period(params, "slow_period", DEFAULTS["dual_ma"]["slow_period"])
         if fast >= slow:
             raise ValueError("fast_period 必须小于 slow_period")
         df["fast_ma"] = df["close"].rolling(fast).mean()
@@ -46,8 +42,8 @@ class StrategyFactory:
 
     @staticmethod
     def _bollinger_bands(df, params):
-        window = StrategyFactory._period(params, "window", 20)
-        deviation = float(params.get("std_dev", 2.0))
+        window = StrategyFactory._period(params, "window", DEFAULTS["bollinger_bands"]["window"])
+        deviation = float(params.get("std_dev", DEFAULTS["bollinger_bands"]["std_dev"]))
         if not math.isfinite(deviation) or not 0 < deviation <= 10:
             raise ValueError("std_dev 必须在 (0, 10] 内")
         df["middle_band"] = df.close.rolling(window).mean()
@@ -60,9 +56,9 @@ class StrategyFactory:
 
     @staticmethod
     def _rsi_reversal(df, params):
-        window = StrategyFactory._period(params, "window", 14)
-        low = float(params.get("buy_threshold", 30))
-        high = float(params.get("sell_threshold", 70))
+        window = StrategyFactory._period(params, "window", DEFAULTS["rsi_reversal"]["window"])
+        low = float(params.get("buy_threshold", DEFAULTS["rsi_reversal"]["buy_threshold"]))
+        high = float(params.get("sell_threshold", DEFAULTS["rsi_reversal"]["sell_threshold"]))
         if not 0 <= low < high <= 100:
             raise ValueError("RSI 阈值需满足 0 ≤ buy_threshold < sell_threshold ≤ 100")
         delta = df.close.diff()
@@ -77,8 +73,8 @@ class StrategyFactory:
 
     @staticmethod
     def _momentum(df, params):
-        window = StrategyFactory._period(params, "window", 20)
-        threshold = float(params.get("threshold", 0.02))
+        window = StrategyFactory._period(params, "window", DEFAULTS["momentum"]["window"])
+        threshold = float(params.get("threshold", DEFAULTS["momentum"]["threshold"]))
         if not math.isfinite(threshold) or not 0 <= threshold < 1:
             raise ValueError("momentum threshold 必须在 [0, 1) 内（小数收益率）")
         df["momentum"] = df.close.pct_change(window, fill_method=None)

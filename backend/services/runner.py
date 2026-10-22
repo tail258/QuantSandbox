@@ -5,14 +5,12 @@ also avoids cache-update races. Cancellation terminates that isolated child.
 """
 from __future__ import annotations
 
-import copy
 import multiprocessing
 import threading
 from pathlib import Path
 
 import pandas as pd
 
-from backend.api.schemas import StrategyConfig
 from backend.core.data_center import DEMO_START, DataCenter, DataUnavailable
 from backend.services.store import Store
 from backend.services.provenance import engine_fingerprint
@@ -24,7 +22,7 @@ def execute_job(root: str, identifier: str) -> None:
     if not run or run["status"] != "running":
         return
     try:
-        from backend.research import run_backtest, run_stress_suite, run_walk_forward
+        from backend.research import run_backtest, run_stress_suite, run_walk_forward, run_parameter_suite
 
         implementation = engine_fingerprint()
 
@@ -58,19 +56,11 @@ def execute_job(root: str, identifier: str) -> None:
             options = run["experiment"]
             result = run_walk_forward(frames, config, training_days=options["training_days"], test_days=options["test_days"])
         elif kind == "parameter":
-            options = run["experiment"]
-            variants = []
-            baseline = run_backtest(frames, config)
-            for index, value in enumerate(options["values"]):
-                changed = copy.deepcopy(config)
-                changed["strategy"]["parameters"][options["parameter"]] = value
-                StrategyConfig.model_validate(changed["strategy"])
-                variant = run_backtest(frames, changed)
-                variants.append({"value": value, "metrics": variant["metrics"]})
-                store.patch_run(identifier, unless_terminal=True, progress=55 + int(35 * (index + 1) / len(options["values"])))
-            best = max(variants, key=lambda item: item["metrics"]["total_return"])
-            result = {"parameter": options["parameter"], "baseline": baseline["metrics"], "variants": variants,
-                      "best_value": best["value"], "notice": "同区间参数敏感性研究；最佳值未经样本外验证，不构成选参结论。"}
+            result = run_parameter_suite(
+                frames, config, run["experiment"],
+                on_progress=lambda value: store.patch_run(identifier, unless_terminal=True,
+                                                          progress=55 + int(35 * value / 100)),
+            )
         else:
             raise ValueError("未知实验类型")
         if run.get("expected_result"):

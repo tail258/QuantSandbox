@@ -1,4 +1,10 @@
-# QuantSandbox V2 API contract
+# QuantSandbox API contract
+
+Request validation lives in `backend/api/schemas.py`; response models live in
+`backend/api/responses.py`. The running service exposes OpenAPI at `/openapi.json`
+and interactive documentation at `/docs`. Responses distinguish each research
+kind; a queued/running/failed/cancelled run may have a null result. List items use
+`RunSummary` without a result payload.
 
 Base `/api`. All dates `YYYY-MM-DD`, amounts CNY, rates in metrics are percentages (12.5 means 12.5%), account fee rates are fractions. API errors use `{detail: string | validationErrors, code?: string}`. Default source is **demo, synthetic prices**; no implicit source fallback. JSON request and response.
 

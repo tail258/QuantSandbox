@@ -13,7 +13,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   try {
     const response = await fetch(`/api${path}`, {
       ...init,
-      signal: init.signal || controller.signal,
+      signal: init.signal ? AbortSignal.any([init.signal, controller.signal]) : controller.signal,
       headers: { 'Content-Type': 'application/json', ...init.headers },
     })
     const text = await response.text()
@@ -39,6 +39,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     if (!body) throw new ApiError('服务未返回有效数据，请检查后端连接。', response.status)
     return body as T
   } catch (error) {
+    if (init.signal?.aborted) throw new DOMException('Cancelled', 'AbortError')
     if (error instanceof ApiError) throw error
     throw new ApiError(
       error instanceof DOMException && error.name === 'AbortError'

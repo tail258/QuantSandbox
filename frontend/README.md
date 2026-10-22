@@ -12,6 +12,7 @@ npm run dev
 
 ```powershell
 npm run typecheck
+npm test
 npm run build
 npm run format
 ```
@@ -23,5 +24,5 @@ npm run format
 - src/style.css：设计变量、交互状态及响应式布局。
 - DESIGN.md：设计参考、文字约束及实现差异。
 
-首个空工作区会创建一项明确标识的合成数据演示研究。行情服务失败时显示错误。
+首次打开保留空研究空间，由用户点击“运行合成数据示例”或“新建回测”。行情服务失败时显示错误。
 普通回放在浏览器按游标计算；盲测视图只消费服务器会话投影。

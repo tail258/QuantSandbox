@@ -1,29 +1,27 @@
-import { computed, reactive } from 'vue'
+import { computed } from 'vue'
 import { request, post, download } from '../api/http'
-import type { Catalog, ReplaySession, Run, RunConfig } from '../types'
+import {
+  toRunSummary,
+  type Catalog,
+  type Run,
+  type RunConfig,
+  type RunSummary,
+  type RunList,
+} from '../types'
 
-export const workspace = reactive({
-  catalog: null as Catalog | null,
-  runs: [] as Run[],
-  active: null as Run | null,
-  session: null as ReplaySession | null,
-  initialized: false,
-  loading: false,
-  error: '',
-  busy: false,
-  createOpen: false,
-  toast: '',
-  cursor: 0,
-})
-let selectionToken = 0
+import { workspace, selectionToken, nextSelection } from './state'
+import { notify, clearNotification } from './ui'
+import { pollRun, cancelPolling } from './polling'
+export { workspace, notify, pollRun }
+export { startSession, advanceSession, revealSession } from './replay'
 let initialization: Promise<void> | undefined
-let toastTimer: number
-export const notify = (message: string) => {
-  workspace.toast = message
-  window.clearTimeout(toastTimer)
-  toastTimer = window.setTimeout(() => {
-    workspace.toast = ''
-  }, 4500)
+let busyTasks = 0
+const beginBusy = () => {
+  busyTasks++
+  workspace.busy = true
+}
+const endBusy = () => {
+  workspace.busy = --busyTasks > 0
 }
 export const sourceLabel = computed(() =>
   workspace.session?.synthetic || workspace.active?.synthetic
@@ -33,9 +31,17 @@ export const sourceLabel = computed(() =>
       : '研究空间',
 )
 export const currentResult = computed(
-  () => workspace.session?.result || workspace.active?.result || null,
+  () =>
+    workspace.session?.result ||
+    (workspace.active &&
+    (workspace.active.kind === 'backtest' || workspace.active.kind === 'branch')
+      ? workspace.active.result
+      : null),
 )
-export const runMetrics = (run: Run) => run.metrics || run.result?.metrics || {}
+export const runMetrics = (run: Run | RunSummary) => {
+  if ('metrics' in run) return run.metrics || {}
+  return run.result ? ('metrics' in run.result ? run.result.metrics : run.result.baseline) : {}
+}
 export const tickerName = (ticker: string) =>
   workspace.catalog?.tickers.find((item) => item.ticker === ticker)?.name || ticker
 export const currentStrategyLabel = computed(
@@ -45,12 +51,13 @@ export const currentStrategyLabel = computed(
     )?.label || '研究',
 )
 export async function refreshRuns() {
-  const data = await request<{ runs: Run[] }>('/runs')
+  const data = await request<RunList>('/runs')
   workspace.runs = data.runs
   return data.runs
 }
 export async function chooseRun(id: string) {
-  const token = ++selectionToken
+  if (workspace.active) cancelPolling(workspace.active.id)
+  const token = nextSelection()
   workspace.loading = true
   workspace.error = ''
   workspace.session = null
@@ -60,51 +67,43 @@ export async function chooseRun(id: string) {
     const run = await request<Run>(`/runs/${id}`)
     if (token !== selectionToken) return
     workspace.active = run
-    workspace.cursor = Math.max(0, (run.result?.series?.length || 1) - 1)
+    workspace.cursor = Math.max(
+      0,
+      (run.result && 'series' in run.result ? run.result.series.length : 1) - 1,
+    )
     localStorage.setItem('qs.active', id)
+    if (['queued', 'running'].includes(run.status)) {
+      void pollRun(id).catch((error) => {
+        if (token === selectionToken && workspace.active?.id === id) workspace.error = error.message
+      })
+    }
   } catch (error) {
     if (token === selectionToken) workspace.error = (error as Error).message
   } finally {
     if (token === selectionToken) workspace.loading = false
   }
 }
-export async function pollRun(id: string) {
-  const token = selectionToken
-  for (let attempt = 0; attempt < 900; attempt++) {
-    const run = await request<Run>(`/runs/${id}`)
-    const index = workspace.runs.findIndex((item) => item.id === id)
-    if (index >= 0) workspace.runs[index] = run
-    if (workspace.active?.id === id && token === selectionToken) workspace.active = run
-    if (['completed', 'failed', 'cancelled'].includes(run.status)) {
-      if (workspace.active?.id === id)
-        workspace.cursor = Math.max(0, (run.result?.series?.length || 1) - 1)
-      await refreshRuns()
-      if (run.status === 'failed') throw new Error(run.error?.message || '研究任务执行失败')
-      return run
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 750))
-  }
-  throw new Error('任务仍在运行，可在研究档案中查看进度。')
-}
 export async function submitRun(config: RunConfig) {
-  workspace.busy = true
+  const token = nextSelection()
+  beginBusy()
   workspace.error = ''
   workspace.session = null
   try {
     const run = await post<Run>('/runs', config)
-    ++selectionToken
+    if (token !== selectionToken) return run
     workspace.active = run
-    workspace.runs.unshift(run)
+    workspace.runs.unshift(toRunSummary(run))
     workspace.createOpen = false
     localStorage.setItem('qs.active', run.id)
     await pollRun(run.id)
-    notify('回测已完成')
+    if (token === selectionToken) notify('回测已完成')
     return run
   } catch (error) {
+    if (token !== selectionToken) return
     workspace.error = (error as Error).message
     throw error
   } finally {
-    workspace.busy = false
+    endBusy()
   }
 }
 export async function initialize() {
@@ -121,16 +120,7 @@ export async function initialize() {
         runs.find((run) => ['backtest', 'branch'].includes(run.kind))
       if (chosen) {
         await chooseRun(chosen.id)
-        if (['queued', 'running'].includes(chosen.status))
-          void pollRun(chosen.id).catch((error) => {
-            workspace.error = error.message
-          })
-      } else
-        await submitRun({
-          ...structuredClone(catalog.defaults),
-          name: '双均线 · 基线研究',
-          source: 'demo',
-        })
+      }
       workspace.initialized = true
     } catch (error) {
       workspace.error = (error as Error).message
@@ -152,7 +142,8 @@ export async function exportRun(id = workspace.active?.id) {
 }
 export async function createBranch(name: string, forkDate: string, positionSize: number) {
   if (!workspace.active) return
-  workspace.busy = true
+  const token = selectionToken
+  beginBusy()
   try {
     const run = await post<Run>(`/runs/${workspace.active.id}/branch`, {
       name,
@@ -160,27 +151,26 @@ export async function createBranch(name: string, forkDate: string, positionSize:
       account: { position_size: positionSize },
     })
     await refreshRuns()
+    if (token !== selectionToken) return
     await chooseRun(run.id)
+    const branchSelection = selectionToken
     await pollRun(run.id)
-    notify('历史分支已创建')
+    if (branchSelection === selectionToken) notify('历史分支已创建')
   } finally {
-    workspace.busy = false
+    endBusy()
   }
 }
-export async function startSession() {
-  if (!workspace.active) return
-  workspace.session = await post<ReplaySession>(`/runs/${workspace.active.id}/sessions`, {
-    cursor: 0,
-  })
-  workspace.cursor = 0
+export function disposeWorkspace() {
+  nextSelection()
+  cancelPolling()
+  clearNotification()
+  initialization = undefined
 }
-export async function advanceSession(steps: number) {
-  if (!workspace.session) return
-  workspace.session = await post<ReplaySession>(`/sessions/${workspace.session.id}/advance`, {
-    steps,
+export async function createExample() {
+  if (!workspace.catalog) return
+  return submitRun({
+    ...JSON.parse(JSON.stringify(workspace.catalog.defaults)),
+    name: '双均线 · 示例研究',
+    source: 'demo',
   })
-}
-export async function revealSession() {
-  if (!workspace.session) return
-  workspace.session = await post<ReplaySession>(`/sessions/${workspace.session.id}/reveal`)
 }

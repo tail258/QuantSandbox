@@ -6,7 +6,10 @@ from pathlib import Path
 def engine_fingerprint() -> dict:
     directory = Path(__file__).resolve().parents[1]
     digest = hashlib.sha256()
-    files = [directory / "research.py", directory / "core" / "engine.py", directory / "core" / "strategy.py"]
+    # Candidate acceptance is part of the experiment implementation as well.
+    files = [directory / "research.py", directory / "api" / "schemas.py"]
+    # Include split accounting/matching/metrics and future computation modules.
+    files.extend(sorted((directory / "core").glob("*.py")))
     research_directory = directory / "research"
     if research_directory.exists():
         files.extend(sorted(research_directory.glob("*.py")))
