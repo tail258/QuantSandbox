@@ -1,2 +1,2 @@
 """Internal compatibility metadata, independent of product naming."""
-VERSION = "3.0.0"
+VERSION = "3.1.0"

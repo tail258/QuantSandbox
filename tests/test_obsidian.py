@@ -1,9 +1,11 @@
 import copy
+import base64
 import io
 import json
 import os
 import subprocess
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -36,12 +38,16 @@ def test_disabled_preview_and_portable_export_never_create_or_read_vault(tmp_pat
     assert service.config() == {"enabled": False, "vault_path": "", "folder": "QuantSandbox"}
     preview = service.preview(REQUEST)
     assert not preview["can_publish"]
+    assert len(preview["charts"]) == 1
+    svg = base64.b64decode(preview["charts"][0]["data_url"].split(",", 1)[1])
+    assert ET.fromstring(svg).tag.endswith("svg")
     assert not root.exists()
     with pytest.raises(ResearchError, match="未启用"):
         service.publish({**REQUEST, "preview_token": preview["preview_token"]})
     assert not root.exists()
     with zipfile.ZipFile(io.BytesIO(service.export(REQUEST))) as archive:
         names = archive.namelist()
+        assert archive.read(preview["charts"][0]["path"]) == svg
         assert any(name.endswith(".md") for name in names)
         assert any(name.endswith(".svg") for name in names)
         text = archive.read(preview["filename"]).decode("utf-8")

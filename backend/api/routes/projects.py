@@ -26,6 +26,13 @@ class LinkRequest(StrictModel):
     run_id: str = Field(min_length=1, max_length=64)
 
 
+class ProjectPatch(StrictModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    question: str | None = Field(default=None, max_length=20000)
+    symbols: list[str] | None = Field(default=None, max_length=40)
+    conclusion: str | None = Field(default=None, max_length=20000)
+
+
 class BridgeRequest(StrictModel):
     snapshot_ids: list[str] = Field(min_length=1, max_length=10)
     config: RunConfig
@@ -45,6 +52,11 @@ def create_project(body: ProjectRequest, request: Request):
 @router.get('/projects/{identifier}')
 def get_project(identifier: str, request: Request):
     return request.app.state.projects.require(identifier)
+
+
+@router.patch('/projects/{identifier}')
+def update_project(identifier: str, body: ProjectPatch, request: Request):
+    return request.app.state.projects.update(identifier, body.model_dump(exclude_unset=True))
 
 
 @router.post('/projects/{identifier}/links')

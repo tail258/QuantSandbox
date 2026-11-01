@@ -26,7 +26,9 @@ class SnapshotStore:
                     "created_at": utc_now(), "volume_unit": "shares",
                     "version": demo_version if source == "demo" else ("research-snapshot-v1" if source == "snapshot" else "akshare-raw-v1"),
                     "price_basis": "synthetic" if source == "demo" else "raw_unadjusted",
-                    "notice": demo_notice if source == "demo" else "未复权价格；当前模型未记账分红送转。"}
+                    "notice": demo_notice if source == "demo" else "未复权价格；当前模型未记账分红送转。",
+                    "data_schema": "market-daily-v2" if any(c in frame for c in ("is_suspended", "limit_up", "limit_down")) else "ohlcv-v1",
+                    "execution_fields": [c for c in ("is_suspended", "limit_up", "limit_down") if c in frame]}
         if origin is not None:
             manifest["origin"] = origin
         # Same price bytes can have distinct upstream provenance. Keep both manifests.
