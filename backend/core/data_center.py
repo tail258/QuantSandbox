@@ -141,9 +141,9 @@ class DataCenter:
         selected = cached.loc[cached.date.between(start, end)].reset_index(drop=True)
         return validate_frame(selected)
 
-    def snapshot(self, ticker: str, frame: pd.DataFrame, source: str) -> dict:
+    def snapshot(self, ticker: str, frame: pd.DataFrame, source: str, *, origin: dict | None = None) -> dict:
         return SnapshotStore(self.snapshots).snapshot(ticker, frame, source,
-                                                     demo_version=DEMO_VERSION, demo_notice=DEMO_NOTICE)
+                                                     demo_version=DEMO_VERSION, demo_notice=DEMO_NOTICE, origin=origin)
 
     def load_snapshot(self, manifest: dict) -> pd.DataFrame:
         return SnapshotStore(self.snapshots).load_snapshot(manifest)
@@ -154,5 +154,7 @@ class DataCenter:
                 "sources": [{"id": "demo", "name": "合成演示行情", "available": True, "synthetic": True,
                              "notice": DEMO_NOTICE, "start_date": DEMO_START, "end_date": DEMO_END},
                             {"id": "akshare", "name": "AKShare · 东方财富", "available": importlib.util.find_spec("akshare") is not None,
-                             "synthetic": False, "notice": "外部行情服务；失败时明确报错，不自动替换为演示数据。"}],
+                             "synthetic": False, "notice": "外部行情服务；失败时明确报错，不自动替换为演示数据。"},
+                            {"id": "snapshot", "name": "研究数据固定快照", "available": True,
+                             "synthetic": False, "notice": "通过研究数据桥接入口指定快照；保留来源与哈希，不重新取数。"}],
                 "snapshot_count": len(datasets)}

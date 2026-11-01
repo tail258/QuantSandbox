@@ -1,3 +1,4 @@
 # Optional live market-data provider. The offline workspace does not require it.
 -r requirements.txt
-akshare==1.18.96
+akshare==1.20.2
+baostock==0.9.4

@@ -33,6 +33,8 @@ def execute_job(root: str, identifier: str) -> None:
         if manifests:
             frames = {item["ticker"]: center.load_snapshot(item) for item in manifests}
         else:
+            if config["source"] == "snapshot":
+                raise DataUnavailable("固定研究快照缺失；不重新取数，也不替换来源。")
             # Reserve enough history for the maximum 500-bar indicator even
             # after exchange holidays; the engine still trades only in scope.
             earliest = pd.Timestamp(config["start_date"]) - pd.Timedelta(days=1100)
@@ -72,7 +74,8 @@ def execute_job(root: str, identifier: str) -> None:
                                                "different_fields": differences, "notice": "使用当前引擎与导入数据重新计算"}
         result["engine"] = implementation
         result["data_provenance"] = {"source": config["source"], "synthetic": config["source"] == "demo",
-                                     "snapshot_hashes": [item["sha256"] for item in manifests]}
+                                     "snapshot_hashes": [item["sha256"] for item in manifests],
+                                     "origins": [item["origin"] for item in manifests if item.get("origin")]}
         store.patch_run(identifier, unless_terminal=True, status="completed", progress=100, result=result)
     except Exception as exc:
         code = "data_unavailable" if isinstance(exc, DataUnavailable) else "research_failed"

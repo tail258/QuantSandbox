@@ -6,11 +6,11 @@ and interactive documentation at `/docs`. Responses distinguish each research
 kind; a queued/running/failed/cancelled run may have a null result. List items use
 `RunSummary` without a result payload.
 
-Base `/api`. All dates `YYYY-MM-DD`, amounts CNY, rates in metrics are percentages (12.5 means 12.5%), account fee rates are fractions. API errors use `{detail: string | validationErrors, code?: string}`. Default source is **demo, synthetic prices**; no implicit source fallback. JSON request and response.
+Base `/api`. All dates `YYYY-MM-DD`, amounts CNY, rates in metrics are percentages (12.5 means 12.5%), account fee rates are fractions. API errors use `{detail: string | validationErrors, code?: string}`. For direct strategy runs the default source is **demo, synthetic prices**; no implicit source fallback. JSON request and response.
 
 ## Catalog and data
 
-- `GET /health` → `{status:'ok',version:'2.0.0',engine:'event-driven',storage:'sqlite',worker:'process'}`
+- `GET /health` → `{status:'ok',version:'3.0.0',engine:'event-driven',storage:'sqlite',worker:'process'}`
 - `GET /catalog` → `{tickers:[{ticker,name,sector,demo_name}],strategies:[{name,label,description,parameters:[{key,label,default,min,max,step}]}],sources:[{id,name,available,synthetic,notice,start_date?,end_date?}],defaults:config,capabilities:[...]}`
 - `GET /data/status` → `{datasets:[{ticker,source,synthetic,sha256,file_sha256,rows,start_date,end_date,created_at,version,price_basis,volume_unit,notice}],sources:[...],snapshot_count}`
 
@@ -79,3 +79,33 @@ All records and metrics in a blind response are filtered/recomputed through `dat
 Evidence records `result.engine` at execution time, hashing engine, strategies and research code. The export uses that stored fingerprint. SHA256 establishes content integrity, not an authenticated publisher. Import verifies required result fields and data manifests before recomputing the experiment; `result.replay_verification` reports actual equality/differences, not an assertion that the imported conclusions are true.
 
 The service binds localhost. Default data path `data/`; override with `QUANT_SANDBOX_DATA_DIR` for isolated testing. Interrupted active jobs become failed on process restart and remain visible; submit a rerun explicitly.
+
+
+## Unified investment research (v3)
+
+All research endpoints share the same local server and use `/api/research`: `/status`, `/fetch`, `/series/{id}`, `/snapshot/{id}`, `/finance`, `/profile/{symbol}`, `/import`, `/analyze`, `/save-finance`, `/runs`, `/runs/{id}`, `/export/{id}`, `/research`, `/etf/*`, `/national/*`. Their run IDs and payloads remain independent of strategy runs. Research CLI: `python -m backend.workbench.cli`.
+
+`GET /api/health` includes `app: QuantSandbox`, `version: 3.0.0`, and the local workspace path for launcher identity. API localhost host/origin rules apply to all modules.
+
+### Projects
+
+- `GET /api/projects` -> `{projects:[{id,name,question,symbols,created_at,updated_at,links}]}`.
+- `POST /api/projects` body `{name,question?,symbols?:[six-digit-code]}` -> HTTP201 project.
+- `GET /api/projects/{id}` -> project.
+- `POST /api/projects/{id}/links` body `{kind:'research'|'simulation',run_id}` -> project. Target records are validated; existing links are idempotent.
+
+### Frozen research-price bridge
+
+`POST /api/bridge/backtests` -> HTTP202 strategy Run.
+
+```json
+{"snapshot_ids":["20-character-research-snapshot-id"],"project_id":"optional-project-id","config":{"name":"Frozen-price baseline","source":"snapshot","tickers":["600519"],"start_date":"2024-01-01","end_date":"2025-12-31","strategy":{"name":"dual_ma","parameters":{"fast_period":5,"slow_period":20}}}}
+```
+
+Provide one immutable quote snapshot per ticker. Each must explicitly declare unadjusted prices and shares-volume units, with source request coverage containing the research interval. All validation precedes scheduling. The bridge retains available pre-start bars for indicator warmup and truncates future bars after the end date. It does not fetch missing data; select a sufficiently long source snapshot first.
+
+Strategy manifests add `source:snapshot` and `origin` containing research snapshot ID/hash, original provider URL, fetch time, request, units and transformation. `GET /api/data/status` exposes snapshot availability. Direct `/api/runs` source=snapshot is rejected: fixed data must enter through the bridge or validated evidence import. Snapshot evidence remains in the existing evidence-v2 envelope and preserves origin metadata on replay.
+
+### Optional Obsidian module
+
+See [Obsidian contract](obsidian.md). Defaults disabled; portable export requires no vault configuration. API `/api/obsidian/config` GET/PUT; `/preview`, `/export`, `/publish` POST. Publish requires the exact current preview token and creates new files only.

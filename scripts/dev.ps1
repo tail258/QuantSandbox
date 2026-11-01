@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-param([int]$ApiPort = 8000, [int]$WebPort = 5173)
+param([int]$ApiPort = 8000, [int]$WebPort = 5174)
 $ErrorActionPreference = 'Stop'
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $env:PYTHONUTF8 = '1'

@@ -1,7 +1,7 @@
 [project]
 name = "quantsandbox"
-version = "2.0.0"
-description = "A reproducible local quantitative research and historical replay workbench"
+version = "3.0.0"
+description = "Local investment research, reproducible analysis and quantitative experiments"
 requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
