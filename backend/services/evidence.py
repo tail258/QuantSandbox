@@ -88,7 +88,7 @@ class EvidenceService:
                 raise ValueError("只有分叉研究可以携带分叉历史")
         except (ValueError, KeyError, TypeError, DataUnavailable) as exc:
             raise ResearchError(422, f"研究包验证失败：{exc}") from exc
-        manifests = [self.center.snapshot(ticker, frame, config["source"]) for ticker, frame in frames.items()]
+        manifests = [self.center.snapshot(ticker, frame, config["source"], origin=next((item["manifest"].get("origin") for item in package["datasets"] if item["manifest"]["ticker"] == ticker), None)) for ticker, frame in frames.items()]
         config["name"] = f"导入重放 · {config['name'][:85]}"
         return self.research.schedule(config, kind=imported["kind"], branch=branch, manifest=manifests,
                         experiment=imported.get("experiment"), expected_result=imported["result"])

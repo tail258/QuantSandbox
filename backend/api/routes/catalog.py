@@ -1,5 +1,6 @@
 """Catalog and data availability."""
 from typing import Annotated
+from pathlib import Path
 from fastapi import APIRouter, Depends
 from backend.api.dependencies import data_center
 from backend.api.schemas import RunConfig
@@ -12,7 +13,8 @@ router = APIRouter(prefix="/api", tags=["catalog"])
 
 @router.get("/health")
 def health():
-    return {"status": "ok", "version": VERSION, "engine": "event-driven", "storage": "sqlite", "worker": "process"}
+    return {"status": "ok", "app": "QuantSandbox", "workspace": str(Path(__file__).resolve().parents[3]),
+            "version": VERSION, "engine": "event-driven", "storage": "sqlite", "worker": "process"}
 
 
 @router.get("/catalog")

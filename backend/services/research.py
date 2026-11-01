@@ -77,6 +77,8 @@ class ResearchService:
         return public_run(run)
 
     def create_run(self, config: RunConfig):
+        if config.source == "snapshot":
+            raise ResearchError(422, "固定研究快照请通过研究数据桥接入口提交，必须指定原始快照。")
         if config.source == "akshare" and importlib.util.find_spec("akshare") is None:
             raise DataUnavailable("AKShare 尚未安装，请先安装 requirements-market.txt。当前请求没有改用演示数据。")
         if config.source == "demo" and set(config.tickers) - {item["ticker"] for item in UNIVERSE}:

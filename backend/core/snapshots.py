@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 import pandas as pd
 from backend.core.data_format import (DataUnavailable, atomic_json, atomic_parquet,
-                                      frame_hash, utc_now, validate_frame)
+                                      canonical_json, frame_hash, utc_now, validate_frame)
 
 
 class SnapshotStore:
@@ -14,7 +14,7 @@ class SnapshotStore:
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
 
-    def snapshot(self, ticker: str, frame: pd.DataFrame, source: str, *, demo_version: str, demo_notice: str) -> dict:
+    def snapshot(self, ticker: str, frame: pd.DataFrame, source: str, *, demo_version: str, demo_notice: str, origin: dict | None = None) -> dict:
         frame = validate_frame(frame)
         digest = frame_hash(frame)
         file = self.directory / f"{digest}.parquet"
@@ -24,10 +24,14 @@ class SnapshotStore:
                     "file_sha256": hashlib.sha256(file.read_bytes()).hexdigest(), "rows": len(frame),
                     "start_date": str(frame.date.min().date()), "end_date": str(frame.date.max().date()),
                     "created_at": utc_now(), "volume_unit": "shares",
-                    "version": demo_version if source == "demo" else "akshare-raw-v1",
+                    "version": demo_version if source == "demo" else ("research-snapshot-v1" if source == "snapshot" else "akshare-raw-v1"),
                     "price_basis": "synthetic" if source == "demo" else "raw_unadjusted",
                     "notice": demo_notice if source == "demo" else "未复权价格；当前模型未记账分红送转。"}
-        atomic_json(self.directory / f"{digest}.json", manifest)
+        if origin is not None:
+            manifest["origin"] = origin
+        # Same price bytes can have distinct upstream provenance. Keep both manifests.
+        manifest_key = digest if origin is None else digest + "-" + hashlib.sha256(canonical_json(origin).encode()).hexdigest()[:16]
+        atomic_json(self.directory / f"{manifest_key}.json", manifest)
         return manifest
 
     def load_snapshot(self, manifest: dict) -> pd.DataFrame:

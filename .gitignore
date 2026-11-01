@@ -3,6 +3,7 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+*.tsbuildinfo
 .pytest_cache/
 
 # 2. 前端 Node 依赖与打包文件
@@ -12,6 +13,8 @@ frontend/dist/
 npm-debug.log*
 
 # 3. 本地产生的大型数据文件
+data/
+exports/
 data/cache/
 data/runtime/
 data/datasets/

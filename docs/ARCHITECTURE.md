@@ -1,6 +1,6 @@
 # 架构与扩展约定
 
-QuantSandbox 采用模块化单体：一个本地 API 服务、一个前端工作台和串行计算进程。模块通过明确的输入与结果协作，保留独立测试能力。
+QuantSandbox 3 采用模块化单体：一个 React 前端、一个 FastAPI 服务、研究模块与独立策略计算进程。研究取数与策略计算分别保留口径和快照，通过冻结行情桥接，不共享可变的计算结果。
 
 ## 请求与计算
 
@@ -64,3 +64,31 @@ SQLite 保存任务元数据、结果、笔记和会话。列表查询只提取�
 - 新撮合规则：先定义生效时点和现金/持仓影响，再增加账户守恒、延迟执行及重放测试。
 - 新实验：复用内核，定义独立结果契约，并验证训练与测试数据边界。
 - 性能改动：先用固定输入测量，再检查结果一致性；检查点恢复需完整持久化状态后另行设计。
+
+
+## 融合后的模块
+
+```mermaid
+flowchart LR
+  UI[React 统一工作台] --> API[FastAPI /api]
+  API --> WB[workbench 公司与产业研究]
+  API --> PJ[projects 研究索引]
+  API --> SIM[策略服务与独立计算进程]
+  WB --> RDB[(研究 SQLite 快照)]
+  RDB --> BR[固定行情桥接与口径校验]
+  BR --> SIM
+  SIM --> SDB[(策略 SQLite 与 Parquet)]
+  WB --> OB[可选 Obsidian 导出]
+  SIM --> OB
+  OB --> MD[Markdown 与相对路径附件]
+```
+
+- `backend/workbench` 保留财务、统计、产业、ETF 与国家队足迹逻辑，公开路径 `/api/research/*`。
+- `backend/core` 保留策略、撮合、账户、指标与可验证行情快照。
+- `backend/services/projects.py` 保存研究问题与有类型的记录关联，不复制分析结果。
+- `/api/bridge/backtests` 只接固定未复权股票 OHLCV；保留来源与转换链，之后的实验不依赖研究缓存是否更新。
+- `backend/integrations/obsidian.py` 只负责通用笔记产出与显式本机发布，不知道特定私人笔记库的名称或位置。
+
+研究 SQLite、策略 SQLite 与项目索引分开管理，接口和研究编号统一；避免先做高风险的历史数据表合并。`create_app(root)` 为测试隔离所有模块的数据目录，研究请求作用域通过 ContextVar 传递到显式后台取数任务。生产默认研究数据为 data/workbench。
+
+前端按需加载功能页，研究 API 与策略 API 有独立调用器。原 Vue 页面不再作为运行入口，策略功能由 React 页面调用既有接口。

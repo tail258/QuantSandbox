@@ -65,7 +65,7 @@ class RunConfig(StrictModel):
     tickers: list[str] = Field(default_factory=lambda: ["000858", "601318", "600036"], min_length=1, max_length=10)
     start_date: date = date(2024, 1, 1)
     end_date: date = date(2025, 12, 31)
-    source: Literal["demo", "akshare"] = "demo"
+    source: Literal["demo", "akshare", "snapshot"] = "demo"
     strategy: StrategyConfig = Field(default_factory=StrategyConfig)
     account: AccountConfig = Field(default_factory=AccountConfig)
 
@@ -87,7 +87,7 @@ class RunConfig(StrictModel):
             raise ValueError("单次研究最多十年，开始日期不能早于 2000 年")
         if self.source == "demo" and not (date(2019, 1, 1) <= self.start_date <= self.end_date <= date(2026, 9, 18)):
             raise ValueError("演示数据范围为 2019-01-01 至 2026-09-18")
-        if self.source == "akshare" and self.end_date > date.today():
+        if self.source in {"akshare", "snapshot"} and self.end_date > date.today():
             raise ValueError("真实行情的结束日期不能晚于今天")
         return self
 
