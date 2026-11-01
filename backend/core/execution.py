@@ -23,7 +23,8 @@ def execute_order(ledger, ticker, day, row, order, previous_equity):
     target_value = previous_equity * order["target_fraction"]
     if action == "rebalance":
         action = "sell" if position["shares"] * raw_price > target_value else "buy"
-    blocked = row.volume <= 0 or bool(row.get("is_suspended", False))
+    suspended = row.get("is_suspended")
+    blocked = row.volume <= 0 or (suspended is not None and not pd.isna(suspended) and bool(suspended))
     if action == "buy" and _number(row.get("limit_up")) is not None:
         blocked = blocked or raw_price >= float(row.limit_up) - 1e-8
     if action == "sell" and _number(row.get("limit_down")) is not None:

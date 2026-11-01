@@ -26,6 +26,9 @@ class ProjectStore:
                     linked_at TEXT NOT NULL, PRIMARY KEY(project_id,kind,run_id)
                 );
             ''')
+            columns = {row[1] for row in connection.execute('PRAGMA table_info(projects)')}
+            if 'conclusion' not in columns:
+                connection.execute("ALTER TABLE projects ADD COLUMN conclusion TEXT NOT NULL DEFAULT ''")
 
     @contextmanager
     def connect(self):
@@ -60,8 +63,29 @@ class ProjectStore:
             raise ResearchError(422, '证券代码须为不重复的六位数字')
         identifier, now = uuid.uuid4().hex, utc_now()
         with self.connect() as connection:
-            connection.execute('INSERT INTO projects VALUES(?,?,?,?,?,?)',
+            connection.execute('INSERT INTO projects(id,name,question,symbols,created_at,updated_at) VALUES(?,?,?,?,?,?)',
                                (identifier, name.strip(), question.strip(), json.dumps(symbols), now, now))
+        return self.require(identifier)
+
+    def update(self, identifier: str, changes: dict):
+        self.require(identifier)
+        if not changes or not changes.keys() <= {'name', 'question', 'symbols', 'conclusion'}:
+            raise ResearchError(422, '请提供项目名称、研究问题、证券或结论')
+        if any(value is None for value in changes.values()):
+            raise ResearchError(422, '项目字段不能为 null；清空文本请使用空字符串')
+        if 'name' in changes:
+            if not changes['name'].strip():
+                raise ResearchError(422, '请填写研究项目名称')
+            changes['name'] = changes['name'].strip()
+        if 'symbols' in changes:
+            symbols = changes['symbols']
+            if len(symbols) != len(set(symbols)) or any(not re.fullmatch(r'\d{6}', s) for s in symbols):
+                raise ResearchError(422, '证券代码须为不重复的六位数字')
+            changes['symbols'] = json.dumps(symbols)
+        changes['updated_at'] = utc_now()
+        assignments = ','.join(f'{key}=?' for key in changes)
+        with self.connect() as connection:
+            connection.execute(f'UPDATE projects SET {assignments} WHERE id=?', (*changes.values(), identifier))
         return self.require(identifier)
 
     def link(self, identifier: str, kind: str, run_id: str):

@@ -6,6 +6,7 @@ The only vault mutation is publish(), which requires a matching preview token.
 from __future__ import annotations
 
 import hashlib
+import base64
 import hmac
 import io
 import json
@@ -276,6 +277,8 @@ class ObsidianService:
         note, files = self._build(request)
         config = self.config()
         return {**note, "files": [{"path": path, "size": len(content), "sha256": hashlib.sha256(content).hexdigest()} for path, content in files.items()],
+                "charts": [{"path": path, "data_url": "data:image/svg+xml;base64," + base64.b64encode(content).decode("ascii")}
+                           for path, content in files.items() if path.endswith(".svg")],
                 "preview_token": self._token(files, config), "can_publish": bool(config["enabled"] and config["vault_path"]),
                 "settings": {"enabled": config["enabled"], "folder": config["folder"]}}
 

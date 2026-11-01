@@ -6,6 +6,8 @@
 
 在 Obsidian 页面选择一条已保存的研究分析或已完成的模拟实验，填写可选标题和备注，点击预览，再下载 ZIP。包内包含 Markdown、计算参数、来源与冻结输入标识、完整结果，以及适用的 SVG 图表。解压后把笔记和同名 `.assets` 文件夹一起复制到笔记库，图片与附件链接保持相对路径。
 
+页面优先显示当前研究项目关联的记录，也可切换为全部记录。预览默认展示排版后的笔记，样本量、统计日期、来源与图表直接可见，详细 JSON 参数按需展开；可切换到 Markdown 源码核对。笔记库设置收在可选按钮中。预览图只使用服务端生成并随导出包附带的 SVG，不自动加载笔记中的外部图片或 HTML。
+
 来源附件保存原始 URL、数据单位、获取时间、请求口径和快照标识；模拟快照保留内容哈希。结果中的样本量、缺失值和统计区间保留，不把当前修订数据当作历史时点数据。便携包不包含笔记库路径或其他本机绝对路径。
 
 ## 可选：手动写入本机笔记库
@@ -26,7 +28,7 @@
 | --- | --- | --- |
 | 配置 | `GET /api/obsidian/config` | 默认 `enabled=false`、空路径 |
 | 保存配置 | `PUT /api/obsidian/config` | `{enabled,vault_path,folder}`，仅本机保存 |
-| 预览 | `POST /api/obsidian/preview` | `{kind,run_id,title?,notes?}`；返回 Markdown、文件清单、`preview_token` |
+| 预览 | `POST /api/obsidian/preview` | `{kind,run_id,title?,notes?}`；返回 Markdown、文件清单、`charts`（服务端生成 SVG 的 data URL）、`preview_token` |
 | 下载 | `POST /api/obsidian/export` | 相同参数，返回 ZIP；无需笔记库配置 |
 | 单次写入 | `POST /api/obsidian/publish` | 相同参数加 `preview_token`；仅启用后可用 |
 

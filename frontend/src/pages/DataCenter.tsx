@@ -1,11 +1,384 @@
-import {useState} from 'react';import {Upload,ArrowUpRight,Database} from 'lucide-react';
-import type {PageProps} from '../App';import {api,today,fmt,download,type Row} from '../api';import {Panel,Note,Chart,RawTable,Source,Research,LoadingButton,Metric} from '../components';
-export default function DataCenter({status,reload}:PageProps){const [kind,setKind]=useState('quotes'),[symbol,setSymbol]=useState('600519'),[start,setStart]=useState('2023-01-01'),[end,setEnd]=useState(today),[adjust,setAdjust]=useState('3'),[force,setForce]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[result,setResult]=useState<Row|null>(null),[showImport,setShowImport]=useState(false),[text,setText]=useState(''),[meta,setMeta]=useState<Row>({name:'',symbol:'rubber_spot',unit:'元/吨',source:'',source_url:'',method:''});
- const fetchData=async()=>{setBusy(true);setMessage('');try{const r=await api('/fetch',{kind,symbol,start,end,adjust,force});setResult(r);setMessage(r.warning||r.cache_status);await reload()}catch(e:any){setMessage(e.message)}finally{setBusy(false)}};
- const importData=async()=>{setBusy(true);setMessage('');try{const r=await api('/import',{text,meta});setResult(r);await reload();setMessage('已导入，来源与可用日期已随快照保存');setShowImport(false)}catch(e:any){setMessage(e.message)}finally{setBusy(false)}};
- return <><div className="page-title"><div><h1>数据中心</h1><p>行情、财报与公告，从同一个入口开始。</p></div><button className="secondary" onClick={()=>setShowImport(!showImport)}><Upload size={16}/> 导入 CSV</button></div>
- <div className="metrics"><Metric label="已缓存数据集" value={status.datasets.length} sub="原始来源与历史快照保留"/><Metric label="可分析序列" value={status.series.length} sub="行情、估值与行业指标"/><Metric label="刷新策略" value="24 小时" sub="可手动强制更新"/><Metric label="研究边界" value="只读" sub="无券商账户连接与下单接口"/></div>
- <Panel title="查询与更新" action={<span className="tag">免费公开数据</span>}><div className="controls"><label>数据类型<select value={kind} onChange={e=>setKind(e.target.value)}><option value="quotes">A 股日线 / 估值</option><option value="finance">三大财务报表</option><option value="announcements">公司公告</option><option value="rubber">橡胶主力连续</option><option value="holders">股东户数</option></select></label><label>股票代码<input value={symbol} disabled={kind==='rubber'} maxLength={6} onChange={e=>setSymbol(e.target.value)} placeholder="600519"/></label><label>开始日期<input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>结束日期<input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label>{kind==='quotes'&&<label>价格口径<select value={adjust} onChange={e=>setAdjust(e.target.value)}><option value="3">不复权</option><option value="2">前复权</option><option value="1">后复权</option></select></label>}<LoadingButton busy={busy} onClick={fetchData}>获取数据</LoadingButton></div><div className="inline-note"><label className="checkbox"><input type="checkbox" checked={force} onChange={e=>setForce(e.target.checked)}/> 强制刷新</label><span>财报、股东户数获取接口可提供的全部历史；上游访问最长 55 秒。</span></div>{message&&<Note tone={message.includes('失败')||message.includes('错误')||message.includes('超时')?'warn':'info'}>{message}</Note>}</Panel>
- {showImport&&<Panel title="导入有来源的时间序列"><Note>CSV 列：date,value,available_date。可用日期填写真实发布日期，避免把尚未公布的数据提前用于分析。</Note><div className="controls wrap">{[['name','序列名称'],['symbol','唯一标识'],['unit','单位'],['source','来源名称'],['source_url','原文 URL'],['method','口径 / 地区 / 品种']].map(([key,label])=><label key={key}>{label}<input value={meta[key]} onChange={e=>setMeta({...meta,[key]:e.target.value})}/></label>)}</div><div className="controls"><input aria-label="选择 CSV 文件" type="file" accept=".csv" onChange={async e=>{const f=e.target.files?.[0];if(f)setText(await f.text())}}/><button className="secondary" onClick={()=>download('series-template.csv','date,value,available_date\n')}>下载空白模板</button><LoadingButton busy={busy} onClick={importData}>验证并导入</LoadingButton></div><small>橡胶标识约定：rubber_spot / rubber_inventory / rubber_production / tire_utilization。数值缺失请删行，不填零。</small></Panel>}
- {result&&<Panel title={result.kind==='quotes'?`${result.symbol} · 行情预览`:result.kind==='rubber'?'沪胶 RU0 · 主力连续':'数据预览'}>{['quotes','rubber','import'].includes(result.kind)?<Chart rows={result.rows} lines={[{key:result.kind==='quotes'?'close':'value',name:result.symbol}]} unit={result.unit}/>:result.kind==='announcements'?<div className="announcements">{result.rows.length?result.rows.map((r:Row,i:number)=><a key={i} href={r['公告链接']} target="_blank" rel="noreferrer"><span>{r['公告标题']}</span><small>{String(r['公告时间']).slice(0,10)} <ArrowUpRight size={14}/></small></a>):<p>接口未返回公告；请核对巨潮原文，空返回不证明期间没有公告。</p>}</div>:<RawTable rows={result.rows.slice().reverse()}/>}<Source s={result}/></Panel>}
- <Panel title="本地数据目录" action={<span className="muted">点击数据集查看快照</span>}><div className="table-scroll"><table><thead><tr><th>数据集</th><th>来源</th><th>行数</th><th>覆盖区间</th><th>获取时间（UTC）</th><th></th></tr></thead><tbody>{status.datasets.map((s:Row)=><tr key={s.id}><td><Database size={14}/> {s.name||s.symbol}<small>{({quotes:'行情与估值',finance:'财报',rubber:'期货',import:'导入序列',announcements:'公告',holders:'股东户数',etf_dashboard:'ETF资金分析',etf_evidence:'ETF持仓证据',national_dashboard:'国家队足迹'} as Row)[s.kind]}</small></td><td>{s.source}</td><td>{fmt(s.count,0)}</td><td>{s.start||'—'}<br/>{s.end||'—'}</td><td>{s.fetched_at.slice(0,16).replace('T',' ')}</td><td><button className="text-button" onClick={()=>api('/snapshot/'+s.id).then(setResult).catch(e=>setMessage(e.message))}>查看</button></td></tr>)}</tbody></table></div></Panel><Research topic={`${symbol} ${kind} 数据缺失；需要核实来源、日期与口径`}/></>}
+import { useEffect, useMemo, useState } from 'react'
+import { Upload, ArrowUpRight, Database, Download, Search } from 'lucide-react'
+import type { PageProps } from '../App'
+import { api, today, fmt, download, type Row } from '../api'
+import { Panel, Note, Chart, RawTable, Source, Research, LoadingButton, Empty } from '../components'
+import { useProject } from '../workspace/ProjectContext'
+import Dialog from '../workspace/Dialog'
+const kindLabels: Row = {
+  quotes: '股票行情与估值',
+  finance: '财务报表',
+  rubber: '期货行情',
+  import: '导入序列',
+  announcements: '公司公告',
+  holders: '股东户数',
+  etf_dashboard: 'ETF资金分析',
+  etf_evidence: '原文持仓证据',
+  national_dashboard: '资金足迹',
+  verification: '交叉核验',
+  closing_snapshot: '盘后快照',
+}
+export default function DataCenter({ status, reload }: PageProps) {
+  const { activeProject } = useProject()
+  const [kind, setKind] = useState('quotes')
+  const [symbol, setSymbol] = useState(activeProject?.symbols[0] || '600519')
+  const [start, setStart] = useState('2023-01-01')
+  const [end, setEnd] = useState(today)
+  const [adjust, setAdjust] = useState('3')
+  const [force, setForce] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+  const [result, setResult] = useState<Row | null>(null)
+  const [showFetch, setShowFetch] = useState(false)
+  const [showImport, setShowImport] = useState(false)
+  const [text, setText] = useState('')
+  const [meta, setMeta] = useState<Row>({
+    name: '',
+    symbol: 'rubber_spot',
+    unit: '元/吨',
+    source: '',
+    source_url: '',
+    method: '',
+  })
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
+  const [projectOnly, setProjectOnly] = useState(!!activeProject)
+  useEffect(() => {
+    const first = activeProject?.symbols[0]
+    if (first) setSymbol(first)
+    setProjectOnly(!!activeProject)
+    setResult(null)
+  }, [activeProject?.id])
+  async function fetchData() {
+    setBusy(true)
+    setMessage('')
+    try {
+      const next = await api('/fetch', { kind, symbol, start, end, adjust, force })
+      setResult(next)
+      setMessage(next.warning || next.cache_status)
+      await reload()
+      setShowFetch(false)
+    } catch (e: any) {
+      setMessage(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function importData() {
+    setBusy(true)
+    setMessage('')
+    try {
+      const next = await api('/import', { text, meta })
+      setResult(next)
+      await reload()
+      setMessage('已导入，来源与可用日期随快照保存。')
+      setShowImport(false)
+    } catch (e: any) {
+      setMessage(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const datasets = useMemo(
+    () =>
+      status.datasets.filter(
+        (s: Row) =>
+          (!projectOnly || !activeProject || activeProject.symbols.includes(s.symbol)) &&
+          (filter === 'all' || s.kind === filter) &&
+          (!search ||
+            (s.name + ' ' + s.symbol + ' ' + s.source)
+              .toLowerCase()
+              .includes(search.toLowerCase())),
+      ),
+    [status.datasets, projectOnly, activeProject, filter, search],
+  )
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <h1>数据中心</h1>
+          <p>先查看已有数据，需要补充时再获取或导入。</p>
+        </div>
+        <div className="actions">
+          <button className="secondary" onClick={() => setShowImport(true)}>
+            <Upload size={15} />
+            导入 CSV
+          </button>
+          <button onClick={() => setShowFetch(true)}>
+            <Download size={15} />
+            获取数据
+          </button>
+        </div>
+      </div>
+      <div className="data-directory-summary">
+        <span>
+          <strong>{status.datasets.length}</strong> 个本地数据集
+        </span>
+        <span>
+          <strong>{status.series.length}</strong> 条可分析序列
+        </span>
+        <span>来源、日期与历史快照保留</span>
+      </div>
+      {message && <Note tone={/失败|错误|超时/.test(message) ? 'warn' : 'info'}>{message}</Note>}
+      {result && (
+        <Panel
+          title={result.name || (result.symbol ? result.symbol + ' · ' : '') + (kindLabels[result.kind] || '研究数据')}
+          action={
+            <button className="text-button" onClick={() => setResult(null)}>
+              收起预览
+            </button>
+          }
+        >
+          {['quotes', 'rubber', 'import'].includes(result.kind) ? (
+            <Chart
+              rows={result.rows}
+              lines={[
+                {
+                  key: result.kind === 'quotes' ? 'close' : 'value',
+                  name: result.name || result.symbol,
+                },
+              ]}
+              unit={result.unit}
+            />
+          ) : result.kind === 'announcements' ? (
+            <div className="announcements">
+              {result.rows.length ? (
+                result.rows.map((row: Row, i: number) => (
+                  <a key={i} href={row['公告链接']} target="_blank" rel="noreferrer">
+                    <span>{row['公告标题']}</span>
+                    <small>
+                      {String(row['公告时间']).slice(0, 10)} <ArrowUpRight size={14} />
+                    </small>
+                  </a>
+                ))
+              ) : (
+                <Note>接口未返回公告，空返回不证明期间没有公告，请核对巨潮原文。</Note>
+              )}
+            </div>
+          ) : (
+            <details className="workspace-details">
+              <summary>查看数据明细</summary>
+              <RawTable rows={result.rows?.slice().reverse() || []} />
+            </details>
+          )}
+          <Source s={result} />
+        </Panel>
+      )}
+      <Panel title="本地数据目录">
+        <div className="controls wrap">
+          <label className="grow">
+            搜索数据
+            <input
+              aria-label="搜索数据集"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="名称、代码或来源"
+            />
+          </label>
+          <label>
+            类型
+            <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+              <option value="all">全部类型</option>
+              {Object.entries(kindLabels).map(([key, label]) => (
+                <option value={key} key={key}>
+                  {String(label)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {activeProject && (
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={projectOnly}
+                onChange={(e) => setProjectOnly(e.target.checked)}
+              />
+              仅当前项目证券
+            </label>
+          )}
+        </div>
+        {status.loading ? (
+          <Empty>正在读取本地数据目录…</Empty>
+        ) : datasets.length ? (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>数据集</th>
+                  <th>来源</th>
+                  <th>覆盖区间</th>
+                  <th>记录数</th>
+                  <th>获取时间（UTC）</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {datasets.map((s: Row) => (
+                  <tr key={s.id}>
+                    <td>
+                      <Database size={13} /> {s.name || s.symbol}
+                      <small>{kindLabels[s.kind] || '其他研究数据'}</small>
+                    </td>
+                    <td>{s.source}</td>
+                    <td>
+                      {s.start || '—'}
+                      <small>至 {s.end || '—'}</small>
+                    </td>
+                    <td>{fmt(s.count, 0)}</td>
+                    <td>{s.fetched_at?.slice(0, 16).replace('T', ' ') || '—'}</td>
+                    <td>
+                      <button
+                        className="text-button"
+                        onClick={() =>
+                          api('/snapshot/' + s.id)
+                            .then(setResult)
+                            .catch((e) => setMessage(e.message))
+                        }
+                      >
+                        查看
+                        <Search size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Empty>
+            {projectOnly
+              ? '当前项目证券没有匹配的数据，可查看全部类型或手动获取。'
+              : '暂无匹配的数据集。'}
+          </Empty>
+        )}
+      </Panel>
+      <details className="workspace-details">
+        <summary>数据补充与接口说明</summary>
+        <p>
+          同请求缓存通常保留 24
+          小时，可手动强制刷新。免费来源失败时保留错误与旧缓存，不用零值代替缺失。
+        </p>
+        <Research topic={`${symbol} ${kind} 数据缺失；需要核实来源、日期与口径`} />
+      </details>
+      {showFetch && (
+        <Dialog title="获取公开数据" onClose={() => setShowFetch(false)}>
+          <div className="controls wrap">
+            <label>
+              数据类型
+              <select value={kind} onChange={(e) => setKind(e.target.value)}>
+                <option value="quotes">A 股日线 / 估值</option>
+                <option value="finance">三大财务报表</option>
+                <option value="announcements">公司公告</option>
+                <option value="rubber">橡胶主力连续</option>
+                <option value="holders">股东户数</option>
+              </select>
+            </label>
+            <label>
+              股票代码
+              <input
+                value={symbol}
+                disabled={kind === 'rubber'}
+                maxLength={6}
+                onChange={(e) => setSymbol(e.target.value)}
+              />
+            </label>
+            <label>
+              开始日期
+              <input
+                type="date"
+                value={start}
+                onInput={(e) => setStart(e.currentTarget.value)}
+                onChange={(e) => setStart(e.target.value)}
+              />
+            </label>
+            <label>
+              结束日期
+              <input
+                type="date"
+                value={end}
+                onInput={(e) => setEnd(e.currentTarget.value)}
+                onChange={(e) => setEnd(e.target.value)}
+              />
+            </label>
+            {kind === 'quotes' && (
+              <label>
+                价格口径
+                <select value={adjust} onChange={(e) => setAdjust(e.target.value)}>
+                  <option value="3">不复权</option>
+                  <option value="2">前复权</option>
+                  <option value="1">后复权</option>
+                </select>
+              </label>
+            )}
+          </div>
+          <label className="checkbox">
+            <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
+            强制刷新已有缓存
+          </label>
+          <p className="muted">
+            财报、股东户数获取接口可提供的全部历史。上游访问最长 55 秒，错误将明确显示。
+          </p>
+          {message && <Note>{message}</Note>}
+          <div className="dialog-actions">
+            <button className="secondary" onClick={() => setShowFetch(false)}>
+              取消
+            </button>
+            <LoadingButton busy={busy} onClick={fetchData}>
+              获取并保存快照
+            </LoadingButton>
+          </div>
+        </Dialog>
+      )}
+      {showImport && (
+        <Dialog title="导入有来源的序列" onClose={() => setShowImport(false)}>
+          <Note>
+            UTF-8 CSV 必须包含
+            date,value,available_date。可用日期填写真实发布日期，缺失行请删除，不填零。
+          </Note>
+          <div className="controls wrap">
+            {[
+              ['name', '序列名称'],
+              ['symbol', '唯一标识'],
+              ['unit', '单位'],
+              ['source', '来源名称'],
+              ['source_url', '原文 URL'],
+              ['method', '口径 / 地区 / 品种'],
+            ].map(([key, label]) => (
+              <label key={key}>
+                {label}
+                <input
+                  value={meta[key]}
+                  onChange={(e) => setMeta({ ...meta, [key]: e.target.value })}
+                />
+              </label>
+            ))}
+          </div>
+          <input
+            aria-label="选择 CSV 文件"
+            type="file"
+            accept=".csv"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (file) setText(await file.text())
+            }}
+          />
+          <button
+            className="text-button"
+            onClick={() => download('series-template.csv', 'date,value,available_date\n')}
+          >
+            下载空白模板
+          </button>
+          {message && <Note>{message}</Note>}
+          <div className="dialog-actions">
+            <button className="secondary" onClick={() => setShowImport(false)}>
+              取消
+            </button>
+            <LoadingButton busy={busy} disabled={!text} onClick={importData}>
+              验证并导入
+            </LoadingButton>
+          </div>
+        </Dialog>
+      )}
+    </>
+  )
+}

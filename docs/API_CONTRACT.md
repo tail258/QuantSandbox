@@ -10,7 +10,7 @@ Base `/api`. All dates `YYYY-MM-DD`, amounts CNY, rates in metrics are percentag
 
 ## Catalog and data
 
-- `GET /health` → `{status:'ok',version:'3.0.0',engine:'event-driven',storage:'sqlite',worker:'process'}`
+- `GET /health` → `{status:'ok',version:'3.1.0',engine:'event-driven',storage:'sqlite',worker:'process'}`
 - `GET /catalog` → `{tickers:[{ticker,name,sector,demo_name}],strategies:[{name,label,description,parameters:[{key,label,default,min,max,step}]}],sources:[{id,name,available,synthetic,notice,start_date?,end_date?}],defaults:config,capabilities:[...]}`
 - `GET /data/status` → `{datasets:[{ticker,source,synthetic,sha256,file_sha256,rows,start_date,end_date,created_at,version,price_basis,volume_unit,notice}],sources:[...],snapshot_count}`
 
@@ -85,7 +85,7 @@ The service binds localhost. Default data path `data/`; override with `QUANT_SAN
 
 All research endpoints share the same local server and use `/api/research`: `/status`, `/fetch`, `/series/{id}`, `/snapshot/{id}`, `/finance`, `/profile/{symbol}`, `/import`, `/analyze`, `/save-finance`, `/runs`, `/runs/{id}`, `/export/{id}`, `/research`, `/etf/*`, `/national/*`. Their run IDs and payloads remain independent of strategy runs. Research CLI: `python -m backend.workbench.cli`.
 
-`GET /api/health` includes `app: QuantSandbox`, `version: 3.0.0`, and the local workspace path for launcher identity. API localhost host/origin rules apply to all modules.
+`GET /api/health` includes `app: QuantSandbox`, `version: 3.1.0`, and the local workspace path for launcher identity. API localhost host/origin rules apply to all modules.
 
 ### Projects
 
@@ -109,3 +109,12 @@ Strategy manifests add `source:snapshot` and `origin` containing research snapsh
 ### Optional Obsidian module
 
 See [Obsidian contract](obsidian.md). Defaults disabled; portable export requires no vault configuration. API `/api/obsidian/config` GET/PUT; `/preview`, `/export`, `/publish` POST. Publish requires the exact current preview token and creates new files only.
+
+
+## Project workspace and execution controls (v3.1)
+
+- Projects include conclusion (empty by default). Existing project tables gain this field without replacing IDs, questions or links.
+- PATCH /api/projects/{id}: partial {name?,question?,symbols?,conclusion?}; unknown fields, null values and invalid symbols are rejected. Empty text explicitly clears a conclusion.
+- Page routes preserve project=<id> independently from run/kind. Project switching changes new research defaults; archived simulations retain their original inputs and source.
+- Optional daily execution columns is_suspended (boolean/0/1/null), limit_up and limit_down (positive finite price/null) survive normalization, Parquet, evidence export and replay. Their values participate in content hashes; unknowns remain null. OHLCV-only fingerprints preserve the v2/v3.0 representation.
+- Snapshot manifests expose data_schema (ohlcv-v1 or market-daily-v2) and execution_fields; no controls are inferred when absent upstream.

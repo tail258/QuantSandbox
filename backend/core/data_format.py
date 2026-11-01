@@ -10,6 +10,11 @@ import numpy as np
 import pandas as pd
 
 COLUMNS = ["date", "open", "high", "low", "close", "volume"]
+EXECUTION_COLUMNS = ["is_suspended", "limit_up", "limit_down"]
+
+
+def market_columns(frame: pd.DataFrame) -> list[str]:
+    return COLUMNS + [column for column in EXECUTION_COLUMNS if column in frame.columns]
 
 
 class DataUnavailable(RuntimeError):
@@ -25,11 +30,12 @@ def canonical_json(value) -> str:
 
 
 def frame_records(frame: pd.DataFrame) -> list[dict]:
-    output = frame[COLUMNS].copy()
+    output = frame[market_columns(frame)].copy()
     output["date"] = pd.to_datetime(output["date"]).dt.strftime("%Y-%m-%d")
     # Python's float repr preserves the exact round-trip value; pandas.to_json
     # truncates precision and can change an execution at a lot-size boundary.
-    return output.to_dict(orient="records")
+    # Optional unknown controls stay null; legacy OHLCV-only hashes stay identical.
+    return output.astype(object).where(pd.notna(output), None).to_dict(orient="records")
 
 
 def frame_hash(frame: pd.DataFrame) -> str:
@@ -70,7 +76,7 @@ def validate_frame(frame: pd.DataFrame, allow_empty: bool = False) -> pd.DataFra
     missing = set(COLUMNS) - set(frame.columns)
     if missing:
         raise DataUnavailable(f"行情字段缺失：{', '.join(sorted(missing))}")
-    result = frame[COLUMNS].copy()
+    result = frame[market_columns(frame)].copy()
     result["date"] = pd.to_datetime(result["date"], errors="raise").dt.normalize()
     for column in COLUMNS[1:]:
         result[column] = pd.to_numeric(result[column], errors="raise")
@@ -82,6 +88,24 @@ def validate_frame(frame: pd.DataFrame, allow_empty: bool = False) -> pd.DataFra
     if ((result["high"] < result[["open", "close", "low"]].max(axis=1)) |
             (result["low"] > result[["open", "close", "high"]].min(axis=1))).any():
         raise DataUnavailable("行情最高价/最低价与开收盘价不一致")
+    for column in ("limit_up", "limit_down"):
+        if column in result:
+            result[column] = pd.to_numeric(result[column], errors="raise")
+            known = result[column].dropna()
+            if not np.isfinite(known.to_numpy(dtype=float)).all() or (known <= 0).any():
+                raise DataUnavailable(f"{column} 须为正的有限价格或 null")
+    if "is_suspended" in result:
+        def suspension(value):
+            if pd.isna(value):
+                return None
+            if isinstance(value, (bool, np.bool_)) or isinstance(value, (int, float, np.number)) and value in (0, 1):
+                return bool(value)
+            raise DataUnavailable("is_suspended 须为布尔值、0、1 或 null")
+        result["is_suspended"] = result["is_suspended"].map(suspension).astype(object)
+    if "limit_up" in result and "limit_down" in result:
+        both = result[["limit_up", "limit_down"]].dropna()
+        if (both.limit_up < both.limit_down).any():
+            raise DataUnavailable("涨停价不能小于跌停价")
     return result.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
 
 
