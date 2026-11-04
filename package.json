@@ -1,7 +1,7 @@
 {
   "name": "quantsandbox-workspace",
   "private": true,
-  "version": "3.1.0",
+  "version": "3.2.0",
   "scripts": {
     "dev": "pwsh -NoProfile -File scripts/dev.ps1",
     "setup": "pwsh -NoProfile -File scripts/setup.ps1 -MarketData",

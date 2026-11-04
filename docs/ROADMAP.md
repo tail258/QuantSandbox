@@ -1,19 +1,27 @@
-# 后续方向
+# Roadmap
 
-以下是尚未实现的产品与计算扩展，按依赖关系推进。当前可用能力以 README 和 API 契约为准。
+The README and API contract describe current capabilities. The items below are planned work, not implemented features. File a focused issue with the research question, expected behavior and validation evidence before changing calculation assumptions.
 
-## 研究组织
+## Research organization
 
-v3 已提供研究项目与研究/模拟记录关联。后续补充项目编辑、研究结论状态、跨项目比较及更细的实验分组；保留现有任务与证据包可访问性。
+Project creation, editing, persistent conclusions and research/experiment links are available. Next candidates are cross-project comparison, clearer research-judgment summaries, record search/grouping and company-specific overview layouts. Preserve existing records, deep links and project-bound asynchronous requests.
 
-## 数据与执行规则
+## Data and execution
 
-优先补充交易日历、证券历史规则、公司行为与退市处理；分别定义指标价格、成交价格和现金事件。提供带口径的固定数据样例及可核对账本。
+Add verified exchange calendars, historical security rules, corporate-action accounting and delisting treatment. Define indicator prices, execution prices and cash events separately, with fixed examples and auditable ledgers. Extend industry data only when sources, units, availability dates and coverage can be checked.
 
-## 实验设计
+## Experiment design
 
-增加独立保留测试集、更多选参目标和分支实验。每项实验记录训练、验证和测试区间，以及候选选择过程。
+Add an independent final holdout set, additional selection objectives and experiments launched from historical branches. Record training, validation and test intervals and the candidate-selection process. Parameter sensitivity alone does not establish out-of-sample performance.
 
-## 大规模研究
+## Interface and accessibility
 
-根据测量结果增加结果分页、缓存和进度事件；在完整状态模型与重放一致性测试齐备后，再实现从检查点恢复。任务并行需要先解决缓存写入与资源限额。
+Reduce repeated project/object headers, improve text size and contrast, and bring the main finding and chart earlier into the viewport. Extend narrow-screen summaries for financial tables and the data catalog. Keep English/Chinese parity, both themes, keyboard focus and original user/source content intact.
+
+## Scale and reliability
+
+Measure before adding result pagination, cache layers or progress streams. Direct checkpoint recovery needs a complete persisted state model and replay-equivalence tests. More concurrent work requires explicit cache-write and resource limits.
+
+## Open-source maintenance
+
+Use the issue forms, contribution guide, private vulnerability reporting and tagged source releases. Expand the redistributable synthetic examples as real user reports reveal gaps. Usage and contributor claims should come from public, verifiable activity.

@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose an improvement to the local research workflow.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        QuantSandbox is a local, read-only research workbench. Keep proposals grounded in a research workflow and preserve explicit data fetching, provenance, reproducibility, and optional note exports. Share synthetic examples rather than personal research files.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What research task needs improvement?
+      description: Describe who needs the change and the concrete obstacle in the current workflow.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Show the intended flow and a small example. Include the expected outcome or acceptance criteria.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing workflows, manual approaches, or smaller changes that could solve the same problem.
+  - type: textarea
+    id: data
+    attributes:
+      label: Data and reproducibility considerations
+      description: If relevant, identify public sources, units, availability dates, licensing/access constraints, snapshot handling, and how the result could be validated with synthetic or fixed input. Do not include credentials or personal caches.

@@ -1,0 +1,62 @@
+/* Theme tokens also cover SVG/Recharts surfaces, including lazy-loaded pages. */
+:root {
+  color-scheme: light;
+  --chart-equity: #087d79;
+  --chart-benchmark: #9caeb7;
+  --chart-grid: #edf0f2;
+  --chart-text: #81939c;
+  --chart-tooltip-bg: #fff;
+  --chart-tooltip-border: #e1e7eb;
+  --bullish: #bb6363;
+  --bearish: #368b72;
+}
+:root[data-theme='terminal'] {
+  color-scheme: dark;
+  --background: #0B0D0F;
+  --surface: #191D21;
+  --surface-elevated: #252B31;
+  --bullish: #E34B4B;
+  --bearish: #31C48D;
+  --accent: #F5C542;
+  --muted: #959DA7;
+  --border: #30363D;
+  --text-primary: #E9EDF2;
+  --text-secondary: #959DA7;
+  --theme-bg: var(--background);
+  --theme-surface: var(--surface);
+  --theme-elevated: var(--surface-elevated);
+  --theme-text: var(--text-primary);
+  --theme-muted: var(--text-secondary);
+  --theme-accent: var(--accent);
+  --theme-accent-soft: #2D291C;
+  --theme-accent-hover: #FFDA6B;
+  --theme-on-accent: #0B0D0F;
+  --theme-warning: #F5C542;
+  --theme-warning-bg: #2D281A;
+  --theme-success-bg: #132D25;
+  --theme-bullish: var(--bullish);
+  --theme-bearish: var(--bearish);
+  --theme-overlay: #00000099;
+  --theme-shadow: #00000055;
+  --theme-border: var(--border);
+  --theme-warning-border: #675628;
+  --chart-equity: #F5C542;
+  --chart-benchmark: #6C7884;
+  --chart-grid: #30363D;
+  --chart-text: #959DA7;
+  --chart-tooltip-bg: #252B31;
+  --chart-tooltip-border: #30363D;
+  --chart-secondary: #8CA5BD;
+  --chart-tertiary: #B79ADE;
+  background: var(--background);
+  color: var(--text-primary);
+}
+:root[data-theme='terminal'] body { background: var(--background); }
+:root[data-theme='terminal'] input,
+:root[data-theme='terminal'] select,
+:root[data-theme='terminal'] textarea { accent-color: var(--accent); }
+:root[data-theme='terminal'] ::selection { background: #F5C54240; color: var(--text-primary); }
+:root[data-theme='terminal'] ::placeholder { color: var(--text-secondary); opacity: .8; }
+:root[data-theme='terminal'] ::-webkit-scrollbar { width: 8px; height: 8px; }
+:root[data-theme='terminal'] ::-webkit-scrollbar-track { background: var(--surface); }
+:root[data-theme='terminal'] ::-webkit-scrollbar-thumb { background: #454D57; border: 2px solid var(--surface); border-radius: 5px; }

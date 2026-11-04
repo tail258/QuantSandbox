@@ -1,7 +1,9 @@
+import {t,useLocale} from '../i18n';
 import {useEffect,useRef,type ReactNode} from 'react';
 import {X} from 'lucide-react';
 
 export default function Drawer({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}){
+ useLocale();
  const container=useRef<HTMLElement>(null),close=useRef(onClose);close.current=onClose;
  useEffect(()=>{
   const previous=document.activeElement as HTMLElement|null,overflow=document.body.style.overflow;
@@ -18,5 +20,5 @@ export default function Drawer({title,onClose,children}:{title:string;onClose:()
   document.addEventListener('keydown',key);
   return()=>{document.removeEventListener('keydown',key);document.body.style.overflow=overflow;previous?.focus()};
  },[]);
- return <div className="simulation-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section ref={container} className="simulation-drawer" role="dialog" aria-modal="true" aria-label={title}><div className="simulation-drawer-head"><div><span className="eyebrow">策略实验</span><h2>{title}</h2></div><button type="button" className="secondary icon-button" aria-label="关闭配置" onClick={onClose}><X size={18}/></button></div>{children}</section></div>;
+ return <div className="simulation-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section ref={container} className="simulation-drawer" role="dialog" aria-modal="true" aria-label={title}><div className="simulation-drawer-head"><div><span className="eyebrow">{t("策略实验")}</span><h2>{title}</h2></div><button type="button" className="secondary icon-button" aria-label={t("关闭配置")} onClick={onClose}><X size={18}/></button></div>{children}</section></div>;
 }

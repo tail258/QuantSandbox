@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Statistics from './Statistics'
+import { setLocale } from '../i18n'
 import { api } from '../api'
 import { post } from '../http'
 const context = vi.hoisted(() => ({
@@ -81,6 +82,7 @@ const props = {
   setPage: () => {},
 }
 beforeEach(() => {
+  setLocale('zh')
   vi.clearAllMocks()
   context.reloadProjects.mockResolvedValue(undefined)
   vi.mocked(post).mockResolvedValue({})
@@ -96,16 +98,19 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  setLocale('en')
   vi.restoreAllMocks()
 })
 describe('saved statistical research workspace', () => {
   it('shows one inline calculation action and no duplicate settings form before a first result', async () => {
-    vi.mocked(api).mockImplementation(async (path) => path === '/runs' ? [] : {})
+    vi.mocked(api).mockImplementation(async (path) => (path === '/runs' ? [] : {}))
     render(<Statistics {...props} />)
-    await waitFor(() => expect((screen.getByLabelText('解释变量 X') as HTMLSelectElement).value).toBe('new-a:close'))
+    await waitFor(() =>
+      expect((screen.getByLabelText('解释变量 X') as HTMLSelectElement).value).toBe('new-a:close'),
+    )
     expect((screen.getByLabelText('观察变量 Y') as HTMLSelectElement).value).toBe('new-b:close')
-    expect(screen.getAllByRole('button', {name:'计算并保存'})).toHaveLength(1)
-    expect(screen.queryByRole('button', {name:'调整实验条件'})).toBeNull()
+    expect(screen.getAllByRole('button', { name: '计算并保存' })).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: '调整实验条件' })).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 

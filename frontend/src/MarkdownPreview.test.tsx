@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import {cleanup,render,screen} from '@testing-library/react';
-import {afterEach,describe,expect,it} from 'vitest';
+import {afterEach,beforeEach,describe,expect,it} from 'vitest';
+import {setLocale} from './i18n';
 import MarkdownPreview from './MarkdownPreview';
-afterEach(cleanup);
+beforeEach(()=>setLocale('zh'));
+afterEach(()=>{cleanup();setLocale('en')});
 describe('safe Markdown reading view',()=>{
  it('escapes HTML and does not load external images or unsafe links',()=>{
   const {container}=render(<MarkdownPreview markdown={'# 安全笔记\n\n<script>alert(1)</script>\n\n![远端图片](https://example.org/image.svg)\n\n[危险地址](javascript:alert)\n'}/>);

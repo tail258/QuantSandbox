@@ -1,2 +1,51 @@
 .obsidian-page{max-width:1260px;margin:auto}.obsidian-steps{list-style:none;display:flex;gap:30px;padding:0 0 18px;margin:0;color:#6f8086;font-size:13px}.obsidian-steps li{display:flex;align-items:center;gap:8px}.obsidian-steps li>span,.obsidian-steps li>svg{width:22px;height:22px;border-radius:50%;background:#edf1f2;padding:3px;text-align:center}.obsidian-steps .complete{color:#087d79}.obsidian-steps .complete>svg{background:#e4f2ee}.obsidian-settings{background:#f8faf9}.obsidian-settings .controls,.obsidian-selection .controls{align-items:end}.obsidian-selection .grow{min-width:240px}.obsidian-project-hint{margin:0 0 14px;font-size:12px;color:#728087}.obsidian-project-hint strong{color:#425963;font-weight:500}.obsidian-record-meta{display:flex;flex-wrap:wrap;gap:10px 20px;font-size:12px;color:#75858b;margin-top:12px}.obsidian-record-meta span:first-child{color:#425963}.obsidian-record-meta code{font-size:11px}.obsidian-customize{margin-top:17px;border-top:1px solid #edf0f1;padding-top:12px}.obsidian-customize>summary{cursor:pointer;color:#62747d;font-size:12px}.obsidian-draft{display:grid;grid-template-columns:1fr 1.5fr;gap:16px;margin-top:14px}.obsidian-draft textarea{min-height:76px}.obsidian-draft .text-button{justify-self:start;grid-column:2}.obsidian-preview-panel{background:white;border:1px solid #e2e8eb;border-radius:12px;overflow:hidden;margin:18px 0}.obsidian-preview-toolbar{display:flex;align-items:center;justify-content:space-between;padding:15px 22px;border-bottom:1px solid #edf0f1;gap:14px;flex-wrap:wrap}.obsidian-preview-toolbar>div:first-child{display:flex;align-items:center;gap:9px}.obsidian-preview-toolbar h2{font-size:14px;margin:0}.obsidian-preview-toolbar .muted{font-size:11px;margin-left:6px}.obsidian-preview-toolbar .segmented{display:flex;gap:2px;background:#f2f5f5;border-radius:7px;padding:3px}.obsidian-preview-toolbar .segmented button{font-size:11px;min-height:29px;background:none;border:0;color:#78888f;padding:5px 10px}.obsidian-preview-toolbar .segmented button.active{background:white;color:#236d68;box-shadow:0 1px 4px #19333812}.markdown-document{max-width:900px;margin:0 auto;padding:34px 40px 38px;line-height:1.85;color:#3a4f57;overflow-wrap:anywhere;font-size:13px}.markdown-document-title{font-size:25px!important;color:#213d46;font-weight:600;line-height:1.45;margin:0 0 20px!important}.markdown-document h3{font-size:15px;color:#274953;margin:28px 0 12px;padding-top:10px;border-top:1px solid #edf1f2}.markdown-document h4{font-size:13px;color:#34525b;margin-top:20px}.markdown-document p{margin:12px 0}.markdown-document ul,.markdown-document ol{padding-left:22px;margin:12px 0}.markdown-document li{margin:7px 0}.markdown-document a{color:#087d79;text-decoration:underline;text-underline-offset:3px}.markdown-document code{background:#f1f5f5;border-radius:4px;font-size:11px;padding:2px 5px}.markdown-document pre{white-space:pre-wrap;max-height:350px;overflow:auto;word-break:break-word;background:#f5f7f8;padding:14px;font-size:11px;line-height:1.6}.markdown-document pre code{padding:0;background:none}.markdown-technical{border:1px solid #e3e9eb;border-radius:7px;margin:12px 0;background:#fafcfc}.markdown-technical>summary{cursor:pointer;padding:10px 13px;color:#627780;font-size:12px}.markdown-technical pre{margin:0}.markdown-chart{margin:24px 0 18px;padding:12px;border:1px solid #e8edef;border-radius:8px;background:#fff}.markdown-chart img{display:block;width:100%;height:auto}.markdown-chart figcaption{font-size:11px;color:#819096;text-align:center;padding-top:8px}.markdown-image-placeholder{padding:28px 14px;text-align:center;font-size:12px;color:#819096;background:#f5f8f8}.markdown-attachment{display:inline-flex;gap:5px;align-items:center;color:#608085}.markdown-attachment small{font-size:9px;border:1px solid #dbe7e6;border-radius:3px;padding:0 3px;color:#80938e}.markdown-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}.markdown-metrics>div{background:#f5f8f8;border-radius:7px;padding:10px 12px}.markdown-metrics dt{font-size:11px;color:#809096}.markdown-metrics dd{margin:4px 0 0;font-size:17px;font-weight:500;color:#245c5d;font-variant-numeric:tabular-nums}.obsidian-source{margin:0;padding:25px 30px;min-height:300px;max-height:700px;overflow:auto;background:#f8fafb;font:12px/1.8 Consolas,monospace;white-space:pre-wrap;word-break:break-word}.obsidian-attachments{max-width:900px;margin:0 auto 24px;padding:0 40px;color:#75868e;font-size:11px}.obsidian-attachments>summary{cursor:pointer}.obsidian-attachments ul{list-style:none;padding:0}.obsidian-attachments li{display:flex;justify-content:space-between;gap:15px;padding:6px 0;border-bottom:1px solid #edf1f2;overflow-wrap:anywhere}.obsidian-attachments li small{white-space:nowrap;color:#96a3a8}.obsidian-empty-preview{padding:28px;min-height:230px;display:flex;justify-content:center;align-items:center}.obsidian-export-bar{display:flex;align-items:center;justify-content:space-between;gap:20px;border-top:1px solid #e9eeef;background:#fafcfc;padding:19px 24px}.obsidian-export-bar strong{font-size:12px;font-weight:500;color:#425f67}.obsidian-export-bar p{font-size:11px;color:#839298;margin:5px 0 0}.obsidian-export-bar .actions{flex-wrap:wrap}.obsidian-export-bar button{font-size:12px;white-space:nowrap}.obsidian-export-bar button:disabled{cursor:not-allowed}
 @media(max-width:760px){.obsidian-page .page-title{align-items:start;gap:12px}.obsidian-page .page-title>button{font-size:11px;padding:7px}.obsidian-steps{gap:12px;justify-content:space-between;font-size:10px}.obsidian-steps li{gap:5px}.obsidian-steps li>span,.obsidian-steps li>svg{width:19px;height:19px}.obsidian-draft{grid-template-columns:1fr}.obsidian-draft .text-button{grid-column:1}.obsidian-preview-toolbar{padding:13px 15px}.obsidian-preview-toolbar .segmented button{font-size:10px;padding:5px 8px}.markdown-document{padding:25px 18px;font-size:12px}.markdown-document-title{font-size:21px!important}.markdown-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.markdown-chart{padding:4px;margin-left:-6px;margin-right:-6px}.obsidian-attachments{padding:0 18px}.obsidian-export-bar{align-items:start;flex-direction:column;padding:16px;gap:13px}.obsidian-export-bar .actions{width:100%}.obsidian-export-bar button{flex:1;font-size:11px}.obsidian-source{padding:18px;font-size:11px}.obsidian-selection .grow{min-width:180px}.obsidian-settings .controls>label{min-width:0}.obsidian-attachments li{flex-direction:column;gap:0}.obsidian-page .controls>label.grow{flex-basis:100%}}
+/* Terminal palette is opt-in; the original light presentation stays unchanged. */
+[data-theme="terminal"] .obsidian-page{color:#E9EDF2}
+[data-theme="terminal"] .obsidian-steps,
+[data-theme="terminal"] .obsidian-project-hint,
+[data-theme="terminal"] .obsidian-record-meta,
+[data-theme="terminal"] .obsidian-customize>summary,
+[data-theme="terminal"] .markdown-technical>summary,
+[data-theme="terminal"] .markdown-chart figcaption,
+[data-theme="terminal"] .markdown-image-placeholder,
+[data-theme="terminal"] .markdown-metrics dt,
+[data-theme="terminal"] .obsidian-attachments,
+[data-theme="terminal"] .obsidian-export-bar p{color:#959DA7}
+[data-theme="terminal"] .obsidian-steps li>span,
+[data-theme="terminal"] .obsidian-preview-toolbar .segmented,
+[data-theme="terminal"] .markdown-document code,
+[data-theme="terminal"] .markdown-document pre,
+[data-theme="terminal"] .markdown-image-placeholder,
+[data-theme="terminal"] .markdown-metrics>div{background:#252B31}
+[data-theme="terminal"] .obsidian-steps .complete{color:#F5C542}
+[data-theme="terminal"] .obsidian-steps .complete>svg{background:#252B31}
+[data-theme="terminal"] .obsidian-settings,
+[data-theme="terminal"] .obsidian-preview-panel,
+[data-theme="terminal"] .markdown-technical,
+[data-theme="terminal"] .markdown-chart,
+[data-theme="terminal"] .obsidian-export-bar{background:#191D21;border-color:#30363D}
+[data-theme="terminal"] .obsidian-project-hint strong,
+[data-theme="terminal"] .obsidian-record-meta span:first-child,
+[data-theme="terminal"] .markdown-document,
+[data-theme="terminal"] .markdown-document-title,
+[data-theme="terminal"] .markdown-document h3,
+[data-theme="terminal"] .markdown-document h4,
+[data-theme="terminal"] .obsidian-export-bar strong{color:#E9EDF2}
+[data-theme="terminal"] .obsidian-customize,
+[data-theme="terminal"] .obsidian-preview-toolbar,
+[data-theme="terminal"] .markdown-document h3,
+[data-theme="terminal"] .obsidian-attachments li{border-color:#30363D}
+[data-theme="terminal"] .obsidian-preview-toolbar .segmented button{color:#959DA7}
+[data-theme="terminal"] .obsidian-preview-toolbar .segmented button.active{background:#30363D;color:#F5C542;box-shadow:none}
+[data-theme="terminal"] .markdown-document a,
+[data-theme="terminal"] .markdown-attachment,
+[data-theme="terminal"] .markdown-metrics dd{color:#F5C542}
+[data-theme="terminal"] .markdown-attachment small{color:#959DA7;border-color:#30363D}
+[data-theme="terminal"] .markdown-document pre code{background:none}
+[data-theme="terminal"] .obsidian-source{background:#0B0D0F;color:#E9EDF2}
+[data-theme="terminal"] .obsidian-attachments li small{color:#959DA7}
+/* Source chart images keep their own canvas and original evidence colors. */
+[data-theme="terminal"] .markdown-chart img{background:#fff}
+[data-theme="terminal"] .obsidian-page .local-chart{background:#191D21;color:#E9EDF2}
+[data-theme="terminal"] .obsidian-page .local-chart text{fill:#959DA7}

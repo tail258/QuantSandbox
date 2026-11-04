@@ -1,6 +1,6 @@
 [project]
 name = "quantsandbox"
-version = "3.0.0"
+version = "3.2.0"
 description = "Local investment research, reproducible analysis and quantitative experiments"
 requires-python = ">=3.12"
 

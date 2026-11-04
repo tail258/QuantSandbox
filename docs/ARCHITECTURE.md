@@ -1,94 +1,85 @@
-# 架构与扩展约定
+# Architecture and extension boundaries
 
-QuantSandbox 3 采用模块化单体：一个 React 前端、一个 FastAPI 服务、研究模块与独立策略计算进程。研究取数与策略计算分别保留口径和快照，通过冻结行情桥接，不共享可变的计算结果。
-
-## 请求与计算
+QuantSandbox is a modular monolith: a React browser interface, a FastAPI service, local SQLite/Parquet stores, and separate strategy worker processes. Browser, CLI and API entry points reuse the same Python research and calculation modules.
 
 ```mermaid
 flowchart LR
-  UI[Vue 工作台] --> API[HTTP 路由与请求校验]
-  API --> S[研究 / 会话 / 证据 / 笔记服务]
-  S --> DB[(SQLite 任务与档案)]
-  DB --> W[独立计算进程]
-  W --> D[行情适配 / 缓存 / 快照]
-  W --> R[研究实验]
-  R --> E[回测编排]
-  E --> ST[策略信号]
-  E --> EX[订单撮合]
-  EX --> AC[账户记账]
-  E --> M[绩效指标]
-  W --> DB
-```
-
-`main.py` 只装配服务、管理启动关闭并映射错误。`api/routes` 声明路径、状态码和响应模型；业务校验在 `services/research.py` 等服务中完成。服务通过 `ResearchError` 表达可预期失败，由 API 转成 HTTP 响应。
-
-`JobRunner` 管理进程、进度、取消和中断恢复。实验函数接收数据与配置，不承担 HTTP 生命周期；参数实验通过可选进度回调通知运行器。
-
-## 内核边界
-
-| 模块 | 职责 |
-| --- | --- |
-| `core/engine.py` | 交易日推进、订单队列、策略切换、分支重放与审计记录 |
-| `core/strategy.py` | 因果指标与持有信号 |
-| `core/strategy_catalog.py` | 策略标识、参数别名、默认值与表单元数据 |
-| `core/execution.py` | 开盘撮合、停牌/涨跌停、T+1、整手和预算 |
-| `core/account.py` | 现金、持仓数量、成本与已实现盈亏 |
-| `core/metrics.py` | 从账户序列与成交计算绩效 |
-| `core/providers.py` | 外部行情请求与字段、单位规范化 |
-| `core/data_center.py` | 行情缓存与数据访问编排 |
-| `core/data_format.py` | 数据校验、规范序列化、哈希与原子文件写入 |
-| `core/snapshots.py` | 内容寻址的 Parquet 快照及清单 |
-
-旧 `run_backtest`、`BacktestEngine`、`calculate_metrics` 和 `DataCenter` 入口继续可用。账户和撮合在内部使用未舍入金额，结果记录保持既有精度。结构改动必须保持相同输入的账本、指标和分支前缀一致。
-
-## 契约与持久化
-
-请求模型与响应模型分别维护。`Run` 按 `kind` 区分普通回测、分叉、压力、参数和滚动样本外结果；未完成任务允许 `result=null`。`RunSummary` 仅表示列表摘要，避免把实验结果声明成带有行情和成交的普通回测。
-
-响应模型保留扩展审计字段。证据包直接从已保存结果构造，保留数值与完整性校验口径；普通接口的类型处理不得改变证据重放的输入。
-
-SQLite 保存任务元数据、结果、笔记和会话。列表查询只提取结果中的摘要指标，不将全部行情、成交和检查点传入 Python。快照通过内容指纹定位；配置、快照和执行时实现指纹组成研究的复现依据。
-
-本次结构调整沿用既有表结构和证据格式。后续变更持久化字段时，应提供显式迁移、旧数据回归样例及失败恢复策略。产品名称统一为 QuantSandbox；内部兼容性标识继续用于读取和核对历史数据。
-
-## 前端生命周期
-
-`workspace/store.ts` 提供页面使用的稳定入口，状态、通知、轮询和盲测请求分模块管理。同一任务复用轮询；切换选择或销毁工作区时，过时请求不得覆盖新选择。空档案由用户显式创建示例或回测。
-
-新增页面优先使用类型收窄读取对应结果，复用已有图表、账本和表单组件。HTTP 请求统一处理超时和取消；业务取消与停止浏览器轮询是不同操作。
-
-## 扩展检查
-
-- 新策略：补目录元数据、请求校验、信号实现及前缀因果性测试。
-- 新数据来源：实现提供器协议并规范 OHLCV、日期和成交量单位；明确价格口径和错误来源。
-- 新撮合规则：先定义生效时点和现金/持仓影响，再增加账户守恒、延迟执行及重放测试。
-- 新实验：复用内核，定义独立结果契约，并验证训练与测试数据边界。
-- 性能改动：先用固定输入测量，再检查结果一致性；检查点恢复需完整持久化状态后另行设计。
-
-
-## 融合后的模块
-
-```mermaid
-flowchart LR
-  UI[React 统一工作台] --> API[FastAPI /api]
-  API --> WB[workbench 公司与产业研究]
-  API --> PJ[projects 研究索引]
-  API --> SIM[策略服务与独立计算进程]
-  WB --> RDB[(研究 SQLite 快照)]
-  RDB --> BR[固定行情桥接与口径校验]
+  UI[React workbench] --> API[FastAPI]
+  CLI[Research CLI] --> WB[Company and industry research]
+  API --> WB
+  API --> PJ[Project index]
+  API --> SIM[Strategy services]
+  WB --> RDB[(Research snapshots / SQLite)]
+  RDB --> BR[Fixed-price snapshot bridge]
   BR --> SIM
-  SIM --> SDB[(策略 SQLite 与 Parquet)]
-  WB --> OB[可选 Obsidian 导出]
-  SIM --> OB
-  OB --> MD[Markdown 与相对路径附件]
+  SIM --> JOB[Worker process]
+  JOB --> CORE[Strategy / execution / account / metrics]
+  CORE --> SDB[(Strategy SQLite / Parquet)]
+  WB --> OUT[Evidence and optional note exports]
+  SIM --> OUT
 ```
 
-- `backend/workbench` 保留财务、统计、产业、ETF 与国家队足迹逻辑，公开路径 `/api/research/*`。
-- `backend/core` 保留策略、撮合、账户、指标与可验证行情快照。
-- `backend/services/projects.py` 保存研究问题与有类型的记录关联，不复制分析结果。
-- `/api/bridge/backtests` 只接固定未复权股票 OHLCV；保留来源与转换链，之后的实验不依赖研究缓存是否更新。
-- `backend/integrations/obsidian.py` 只负责通用笔记产出与显式本机发布，不知道特定私人笔记库的名称或位置。
+## Application and service lifecycle
 
-研究 SQLite、策略 SQLite 与项目索引分开管理，接口和研究编号统一；避免先做高风险的历史数据表合并。`create_app(root)` 为测试隔离所有模块的数据目录，研究请求作用域通过 ContextVar 传递到显式后台取数任务。生产默认研究数据为 data/workbench。
+`backend/main.py` assembles routers, middleware, error mapping, services and the optional built frontend. `create_app(root)` gives tests an isolated data root. The research request scope uses a ContextVar and is propagated to explicit background fetching tasks. Production research data defaults to `data/workbench`.
 
-前端按需加载功能页，研究 API 与策略 API 有独立调用器。原 Vue 页面不再作为运行入口，策略功能由 React 页面调用既有接口。
+`backend/api/routes` owns HTTP paths, request/response validation and status codes. Domain validation belongs in services. Expected strategy failures use `ResearchError`; provider failures remain visible. `JobRunner` manages calculation processes, progress, cancellation and interrupted-job recovery. Experiment functions receive inputs and configuration independently of HTTP lifetimes.
+
+The server binds localhost. Public data fetching is explicit; the application has no brokerage, account-trading or live-order integration.
+
+## Research, projects and immutable inputs
+
+`backend/workbench` contains financial statements, company profiles, industry observations, statistics, ETF flows and disclosed institutional evidence. Its routes use `/api/research/*`; `python -m backend.workbench.cli` exposes the same module logic.
+
+`backend/services/projects.py` stores questions, securities, conclusions and typed record links. Projects reference saved results rather than copying them. Strategy runs and research analyses retain independent IDs and payloads.
+
+`/api/bridge/backtests` accepts specific frozen, unadjusted quote snapshots. It checks provenance, volume units, price basis and interval coverage before scheduling; available earlier history provides indicator warm-up, and future bars are truncated. It never downloads replacement prices. Subsequent experiments reuse the fixed strategy snapshot even if research caches change.
+
+## Calculation core
+
+| Module under `backend/core` | Responsibility |
+| --- | --- |
+| `engine.py` | Trading-day progression, pending orders, strategy switches, forks and audit records |
+| `strategy.py` | Causal indicators and position signals |
+| `strategy_catalog.py` | Strategy IDs, aliases, defaults and parameter metadata |
+| `execution.py` | Open-price matching, suspension/price limits, T+1, lots and budgets |
+| `account.py` | Cash, quantity, cost basis and realized profit/loss |
+| `metrics.py` | Performance from account paths and trades |
+| `providers.py` | Public providers, field normalization and units |
+| `data_center.py` | Provider/cache orchestration and snapshot access |
+| `data_format.py` | Validation, canonical serialization, hashing and atomic writes |
+| `snapshots.py` | Content-addressed Parquet snapshots and manifests |
+
+Keep compatibility entry points such as `run_backtest`, `BacktestEngine`, `calculate_metrics` and `DataCenter`. Internal accounting uses unrounded amounts; presentation preserves the documented result precision. A structural change must preserve ledger entries, metrics and fork prefixes for the same fixed inputs.
+
+Daily signals execute no earlier than the next tradable open. Optional `is_suspended`, `limit_up` and `limit_down` values survive normalization, caching, export and replay and participate in hashes. Unknown controls remain unknown. OHLCV-only snapshots retain their earlier hash representation.
+
+## Persistence and evidence
+
+Strategy SQLite stores tasks, results, notes and replay sessions; Parquet stores frozen daily bars. List queries read summary fields without loading every bar, trade and checkpoint. Research SQLite stores immutable input payloads, analysis records and local company profiles. Project storage links these records without merging their schemas.
+
+The configuration, input snapshots and execution-time implementation fingerprint form the reproduction evidence. Evidence export uses stored results and fingerprints. Import verifies original package integrity before recomputation. Upload the original JSON text; browser parse/stringify can change the numeric representation and invalidate the evidence checksum. SHA256 checks content integrity, not publisher authenticity.
+
+Schema changes need explicit migration behavior, existing-record regression cases and a failure recovery plan. Do not reinterpret archived research as a newly computed result.
+
+## React state and asynchronous work
+
+- `frontend/src/App.tsx` groups navigation and lazy-loads feature pages.
+- `workspace/ProjectContext.tsx` owns project selection, deep links, record association and protection against late selection responses. There is no Vue store in the current runtime.
+- `pages` contains company, data, market-observation, statistics, archives and note pages.
+- `simulation/useSimulationData.ts` separates list requests from selected-record requests. `simulation/usePlayback.ts` manages replay selection, cursor and blind sessions; `Terminal`, `Composer`, `Comparison` and `Results` compose the strategy page.
+- `http.ts` provides shared strategy/project transport, timeouts and cancellation. `api.ts` wraps the research API. Cancelling browser polling and cancelling a server task are distinct actions.
+- `i18n.ts` and `i18n/*` translate interface copy. `theme.ts`, `themes.css` and component styles handle appearance. Preferences use small local browser-storage keys. Switching language or theme preserves selected records and unsaved fields.
+- `chart-export.ts` freezes inherited theme tokens into standalone SVG exports without changing the rendered chart or research data.
+
+Capture the originating project when starting asynchronous work. A later project switch must not attach old responses or newly completed records to the new project. Cancelling or invalidating a request must prevent it from restoring obsolete state. Notes preview tokens become stale when their inputs change.
+
+## Optional notebook integration
+
+`backend/integrations/obsidian.py` produces portable Markdown, SVG and relative-path attachments. Export requires no vault configuration. Direct writing requires an explicit previewed operation and creates new files only; it refuses overwrite, traversal and unsafe targets. It does not read or scan notebook contents. Local settings never enter shareable exports or source releases.
+
+## Extension checks
+
+Add strategy catalog metadata, validation, causal-prefix tests and execution cases for a new strategy. A provider needs normalized dates/OHLCV/volume units, price-basis metadata and explicit error behavior. Execution changes require timing, accounting conservation and evidence replay checks. Experiments need separate result contracts and training/test boundaries. Measure performance with fixed inputs before changing storage or checkpoint restoration.
+
+Use [the API contract](API_CONTRACT.md), [contribution guide](../CONTRIBUTING.md), [offline reproduction](reproducibility.md) and [release process](releases.md) as concrete entry points.

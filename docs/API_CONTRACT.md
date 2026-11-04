@@ -10,7 +10,7 @@ Base `/api`. All dates `YYYY-MM-DD`, amounts CNY, rates in metrics are percentag
 
 ## Catalog and data
 
-- `GET /health` → `{status:'ok',version:'3.1.0',engine:'event-driven',storage:'sqlite',worker:'process'}`
+- `GET /health` → `{status:'ok',version:'3.2.0',engine:'event-driven',storage:'sqlite',worker:'process'}`
 - `GET /catalog` → `{tickers:[{ticker,name,sector,demo_name}],strategies:[{name,label,description,parameters:[{key,label,default,min,max,step}]}],sources:[{id,name,available,synthetic,notice,start_date?,end_date?}],defaults:config,capabilities:[...]}`
 - `GET /data/status` → `{datasets:[{ticker,source,synthetic,sha256,file_sha256,rows,start_date,end_date,created_at,version,price_basis,volume_unit,notice}],sources:[...],snapshot_count}`
 
