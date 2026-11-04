@@ -1,31 +1,34 @@
-# 工作台视觉规范
+# Interface design
 
-参考：`terminal-concept.png`，内置 Image Gen 生成的完整主终端设计。
+The current runtime is the React workbench. `terminal-concept.png` is an earlier design exploration, not a screenshot of the current application. Runtime styles and verified browser behavior take precedence over that illustration.
 
-用户随后明确要求减少页面多余文字。本规范覆盖参考图中的口号、重复标题和解释性副标题：删除“让每一次决策，有据可循。”；只显示当前研究名称或页面名称；保留合成数据来源、必要操作与真实数值。复杂说明进入按需展开的面板。
+## Themes
 
-| Token | 值 |
+The original Classic light theme remains the default appearance. Financial terminal is an optional black/gray/gold theme. Both use the same layouts, records and calculations. The interface defaults to English and offers Chinese; browser preferences persist independently of research data.
+
+| Financial terminal token | Value |
 | --- | --- |
-| 背景 | `#101217` |
-| 导航 | `#14171d` |
-| 面板 | `#191d25` |
-| 分隔线 | `#2a303b` |
-| 主文字 | `#e8ebf2` |
-| 次文字 | `#8893a7` |
-| 操作强调 | `#8ea9ff` |
-| 行情上涨 | `#ec7682` |
-| 行情下跌 | `#60c4a4` |
+| Background | `#0B0D0F` |
+| Surface | `#191D21` |
+| Elevated surface | `#252B31` |
+| Bullish / rising | `#E34B4B` |
+| Bearish / falling | `#31C48D` |
+| Accent / equity curve | `#F5C542` |
+| Primary text | `#E9EDF2` |
+| Secondary text | `#959DA7` |
+| Border | `#30363D` |
+| Benchmark | `#6C7884` |
 
-采用系统中文无衬线字体，数字启用 tabular-nums。普通控件字号 13–14px，辅助标签 12px，工作区标题 22–26px，主指标 24px 左右；数值根据屏幕宽度适度收缩。金额保留两位小数并分组，百分比带符号。
+Use `themes.css` tokens and component-specific variables for graphs, controls and dialogs. Keep red-up/green-down semantics consistent. Downloaded charts must retain readable colors outside the application; original evidence images remain unchanged.
 
-桌面布局为 200–220px 导航轨、主区域与 280–320px 解释栏。主区域包括四个无卡片指标、行情和净值画布、时间轴、分支对照、交易表。8px 内圆角，使用细分隔线，避免嵌套卡片。
+## Layout and interaction
 
-导航与功能图标为一致的细线图标：总览网格、终端屏幕、实验烧瓶、数据圆柱、档案文档、分叉节点、播放三角和步进控制。所有图标按钮必须有可访问名称。
+Use project-centered navigation, result-first pages, and drawers or dialogs for configuration. Keep dates, units, sample counts and data gaps visible; collapse long methodology and identifiers. Show company names with supporting codes, and avoid repeated headings that push results below the fold.
 
-所有行情、成交、指标和分支由后端实际结果驱动。参考图中的价格、日期、条数以及示意分支不作为固定文案；空状态不能填假数据。合成样例始终标记来源。
+Use tabular numerals, readable body/table text, visible focus states, accessible icon labels and reduced-motion support. On narrow screens, keep language, appearance and current-project controls accessible; allow tables and record strips to scroll within their own containers instead of overflowing the page.
 
-窄屏收拢导航，解释栏移到图表下方；表格自身横向滚动，整页不横向溢出。保留键盘焦点，尊重减少动画偏好。
+The strategy page links candles, trades and decision evidence. A selected record retains its inputs across project changes. Preserve unsaved fields when switching language or theme; never translate user text, source documents or archived evidence in place.
 
-验证主路径：创建回测 → 完成任务 → 选中成交 → 推进/回退 → 创建分支 → 比较 → 运行实验 → 保存笔记/导出证据。另检验无交易、请求失败、无数据、处理中和小屏状态。
+## Visual validation
 
-Browser/IAB 发现调用返回 `nodeRepl.fetch request failed`，本次使用本地 Playwright Chromium 验证。对比项目为布局比例、字体层级、颜色、图表与解释联动、控件、简化后的文案和窄屏布局。最终截图按参考图尺寸及移动视口检查。
+Build the production frontend and test a real browser at desktop and phone sizes. Check navigation, selection, project changes, late responses, loading/errors, empty states, blind replay, note-preview invalidation, both languages and both themes as affected. Verify standalone SVG downloads as well as the on-screen chart. Mockups and a passing build alone do not prove interaction behavior.

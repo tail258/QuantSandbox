@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n'
 import { useEffect, useState } from 'react'
 import { Upload } from 'lucide-react'
 import type { PageProps } from '../App'
@@ -11,6 +12,7 @@ const variables = [
   ['rubber_production', '天然橡胶产量', '吨 / 万吨', '注明国家、频率与初值/修订值'],
 ]
 export default function Industry({ status, reload, setPage }: PageProps) {
+  useLocale()
   const [series, setSeries] = useState<Row[]>([]),
     [days, setDays] = useState('365'),
     [busy, setBusy] = useState(false),
@@ -51,12 +53,12 @@ export default function Industry({ status, reload, setPage }: PageProps) {
     <>
       <div className="page-title">
         <div>
-          <h1>橡胶产业周期</h1>
-          <p>价格、库存与生产的共同观察。</p>
+          <h1>{t('橡胶产业周期')}</h1>
+          <p>{t('价格、库存与生产的共同观察。')}</p>
         </div>
         <div className="actions">
           <button className="secondary" onClick={() => setPage('data')}>
-            <Upload size={16} /> 导入 CSV
+            <Upload size={16} /> {t('导入 CSV')}{' '}
           </button>
           <LoadingButton
             busy={busy}
@@ -73,15 +75,17 @@ export default function Industry({ status, reload, setPage }: PageProps) {
               }
             }}
           >
-            更新数据
+            {t('更新数据')}{' '}
           </LoadingButton>
         </div>
       </div>
       <Note tone="warn">
-        {variables.filter(([key]) => series.some((s) => s.symbol === key)).length} / 5
-        项指标已接入。未核实的数据保留缺失；RU0 换月规则由数据商决定，跨换月涨跌不代表同一合约收益。
+        {t(
+          '{count} / 5 项指标已接入。未核实的数据保留缺失；RU0 换月规则由数据商决定，跨换月涨跌不代表同一合约收益。',
+          { count: variables.filter(([key]) => series.some((s) => s.symbol === key)).length },
+        )}{' '}
       </Note>
-      {msg && <Note>{msg}</Note>}
+      {msg && <Note>{t(msg)}</Note>}
       <div className="metrics">
         {variables.slice(0, 4).map(([key, name, unit]) => {
           const s = series.find((s) => s.symbol === key),
@@ -89,13 +93,13 @@ export default function Industry({ status, reload, setPage }: PageProps) {
           return (
             <Metric
               key={key}
-              label={name}
+              label={t(name)}
               value={fmt(last?.value)}
               sub={
                 <>
-                  {s?.unit || unit}
+                  {s?.unit || t(unit)}
                   <br />
-                  {last ? `${last.date} · ${s?.source}` : '待接入 · 可导入来源数据'}
+                  {last ? `${last.date} · ${s?.source}` : t('待接入 · 可导入来源数据')}
                 </>
               }
             />
@@ -104,17 +108,17 @@ export default function Industry({ status, reload, setPage }: PageProps) {
       </div>
       <div className="grid-main">
         <Panel
-          title="价格与库存"
+          title={t('价格与库存')}
           action={
             <select
-              aria-label="产业周期时间范围"
+              aria-label={t('产业周期时间范围')}
               value={days}
               onChange={(e) => setDays(e.target.value)}
             >
-              <option value="180">近 6 个月</option>
-              <option value="365">近 1 年</option>
-              <option value="1095">近 3 年</option>
-              <option value="all">全部</option>
+              <option value="180">{t('近 6 个月')}</option>
+              <option value="365">{t('近 1 年')}</option>
+              <option value="1095">{t('近 3 年')}</option>
+              <option value="all">{t('全部')}</option>
             </select>
           }
         >
@@ -125,11 +129,12 @@ export default function Industry({ status, reload, setPage }: PageProps) {
             unit={visible[0]?.unit}
           />
           <p className="muted">
-            选择右侧变量叠加；不同量纲以首个有效值 = 100
-            比较方向。按观测日期展示，无数据日期不补值。
+            {t(
+              '选择右侧变量叠加；不同量纲以首个有效值 = 100 比较方向。按观测日期展示，无数据日期不补值。',
+            )}{' '}
           </p>
         </Panel>
-        <Panel title="数据覆盖">
+        <Panel title={t('数据覆盖')}>
           {variables.map(([key, name, unit, detail]) => {
             const s = series.find((s) => s.symbol === key)
             return (
@@ -146,50 +151,54 @@ export default function Industry({ status, reload, setPage }: PageProps) {
                     }
                   />
                   <span>
-                    {name}
-                    <small>{detail}</small>
+                    {t(name)}
+                    <small>{t(detail)}</small>
                   </span>
                 </label>
-                <span className={'tag ' + (s ? 'good' : '')}>{s ? '可用' : '待接入'}</span>
+                <span className={'tag ' + (s ? 'good' : '')}>{s ? t('可用') : t('待接入')}</span>
               </div>
             )
           })}
-          <small>自定义标识在数据中心导入，来源与口径必填。</small>
+          <small>{t('自定义标识在数据中心导入，来源与口径必填。')}</small>
         </Panel>
       </div>
       <div className="grid-two">
-        <Panel title="价差观察">
+        <Panel title={t('价差观察')}>
           <div className="spread">
-            <span>RU 主力 − 现货</span>
+            <span>{t('RU 主力 − 现货')}</span>
             <strong>
               {fmt(spread)}
-              <small> 元/吨</small>
+              <small> {t('元/吨')}</small>
             </strong>
           </div>
           <p className="muted">
-            {common ? '共同观测日：' + common.date : '需有相同日期、相同单位的现货与期货数据。'}
+            {common
+              ? t('共同观测日：{date}', { date: common.date })
+              : t('需有相同日期、相同单位的现货与期货数据。')}
           </p>
-          <Note>此为报价差，不自动构成可套利基差；还需核对胶种、交割品质、税费、地区及合约。</Note>
+          <Note>
+            {t('此为报价差，不自动构成可套利基差；还需核对胶种、交割品质、税费、地区及合约。')}
+          </Note>
         </Panel>
         <details className="workspace-details">
-          <summary>变量标识与导入口径</summary>
+          <summary>{t('变量标识与导入口径')}</summary>
           <div className="table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>变量</th>
-                  <th>标准标识</th>
-                  <th>频率建议</th>
+                  <th>{t('变量')}</th>
+                  <th>{t('标准标识')}</th>
+                  <th>{t('频率建议')}</th>
                 </tr>
               </thead>
               <tbody>
                 {variables.map(([key, name], i) => (
                   <tr key={key}>
-                    <td>{name}</td>
+                    <td>{t(name)}</td>
                     <td>
                       <code>{key}</code>
                     </td>
-                    <td>{i < 2 ? '日度' : i === 4 ? '月度' : '周度'}</td>
+                    <td>{i < 2 ? t('日度') : i === 4 ? t('月度') : t('周度')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -198,7 +207,7 @@ export default function Industry({ status, reload, setPage }: PageProps) {
         </details>
       </div>
       <details className="workspace-details">
-        <summary>补充行业数据的检索任务</summary>
+        <summary>{t('补充行业数据的检索任务')}</summary>
         <Research topic="天然橡胶现货价格、社会库存、主产国产量、全钢/半钢轮胎开工率。优先协会、统计部门与交易所，记录地区胶种单位和发布日期" />
       </details>
       {series.map((s) => (

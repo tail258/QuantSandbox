@@ -1,3 +1,4 @@
+import {t,useLocale} from '../i18n';
 import { useEffect, useState } from 'react'
 import { Download, History, Link2 } from 'lucide-react'
 import type { PageProps } from '../App'
@@ -11,6 +12,7 @@ const names: Row = {
   finance: '财务比较',
 }
 export default function Runs({ setPage }: PageProps) {
+ useLocale();
   const { activeProject, linkRecord } = useProject()
   const [runs, setRuns] = useState<Row[]>([])
   const [selected, setSelected] = useState<Row | null>(null)
@@ -74,16 +76,15 @@ export default function Runs({ setPage }: PageProps) {
     <>
       <div className="page-title">
         <div>
-          <h1>分析记录</h1>
-          <p>固定输入与参数，回到已有证据继续研究。</p>
+          <h1>{t("分析记录")}</h1>
+          <p>{t("固定输入与参数，回到已有证据继续研究。")}</p>
         </div>
         <button onClick={() => setPage('stats')}>
           <History size={15} />
-          新建统计实验
-        </button>
+          {t("新建统计实验")}</button>
       </div>
       <div className="data-directory-summary">
-        <span>{runs.length} 条近期分析记录</span>
+        <span>{runs.length} {t("条近期分析记录")}</span>
         {activeProject && (
           <label className="checkbox">
             <input
@@ -91,46 +92,42 @@ export default function Runs({ setPage }: PageProps) {
               checked={projectOnly}
               onChange={(e) => setProjectOnly(e.target.checked)}
             />
-            仅当前项目
-          </label>
+            {t("仅当前项目")}</label>
         )}
-        <span>导出附 Markdown、CSV、参数与输入快照</span>
+        <span>{t("导出附 Markdown、CSV、参数与输入快照")}</span>
       </div>
-      {msg && <Note>{msg}</Note>}
+      {msg && <Note>{t(msg)}</Note>}
       {selected && (
         <Panel
           title={selected.title}
           action={
             <div className="actions">
               <button className="secondary" onClick={replay}>
-                复核原结果
-              </button>
+                {t("复核原结果")}</button>
               <button onClick={() => setPage('obsidian?kind=research&run=' + selected.id)}>
-                整理笔记
-              </button>
+                {t("整理笔记")}</button>
             </div>
           }
         >
           <div className="research-method-strip">
             <span>
-              {names[selected.kind]} · {selected.created_at.slice(0, 16).replace('T', ' ')} UTC
+              {t(names[selected.kind])} · {selected.created_at.slice(0, 16).replace('T', ' ')} UTC
             </span>
-            <span>计算版本 {selected.version}</span>
+            <span>{t("计算版本")}{selected.version}</span>
           </div>
           {selected.kind === 'statistics' && (
             <p>
-              相关系数 {fmt(selected.result.correlation, 4)} · 配对样本 n = {selected.result.n}
+              {t("相关系数")}{fmt(selected.result.correlation, 4)} {t("· 配对样本 n =")}{selected.result.n}
             </p>
           )}
           {selected.kind === 'national' && (
             <p>
-              研究截至 {selected.result.research_asof} · 份额截至 {selected.result.asof}
+              {t("研究截至")}{selected.result.research_asof} {t("· 份额截至")}{selected.result.asof}
             </p>
           )}
           {selected.kind === 'etf' && (
             <p>
-              份额截至 {selected.result.asof} · 样本 {selected.result.universe.length} 只
-            </p>
+              {t("份额截至")}{selected.result.asof} {t("· 样本")}{selected.result.universe.length} {t("只")}</p>
           )}
           {activeProject && !linked(selected.id) && (
             <button
@@ -142,28 +139,25 @@ export default function Runs({ setPage }: PageProps) {
               }
             >
               <Link2 size={14} />
-              关联当前项目
-            </button>
+              {t("关联当前项目")}</button>
           )}
           <div className="actions result-table-controls">
             <a className="button secondary" href={'/api/research/export/' + selected.id}>
               <Download size={14} />
-              下载分析包
-            </a>
+              {t("下载分析包")}</a>
             <button className="text-button" onClick={() => setSelected(null)}>
-              收起详情
-            </button>
+              {t("收起详情")}</button>
           </div>
           <details className="workspace-details">
-            <summary>冻结参数与输入快照</summary>
+            <summary>{t("冻结参数与输入快照")}</summary>
             <pre>{JSON.stringify(selected.params, null, 2)}</pre>
-            <p>输入快照</p>
+            <p>{t("输入快照")}</p>
             <code>{selected.inputs.join(' / ')}</code>
-            <p>记录 {selected.id}</p>
+            <p>{t("记录")}{selected.id}</p>
           </details>
           {['etf', 'national'].includes(selected.kind) && (
             <details className="workspace-details">
-              <summary>逐日结果</summary>
+              <summary>{t("逐日结果")}</summary>
               <RawTable rows={selected.result.daily} />
             </details>
           )}
@@ -171,11 +165,11 @@ export default function Runs({ setPage }: PageProps) {
             <RawTable
               rows={selected.result.flatMap((company: Row) =>
                 company.rows.slice(-4).map((row: Row) => ({
-                  公司: company.symbol,
-                  报告期: row.date,
-                  '营业收入（亿元）': row.revenue == null ? '—' : fmt(row.revenue / 1e8, 2),
-                  '归母净利润（亿元）': row.profit == null ? '—' : fmt(row.profit / 1e8, 2),
-                  '经营现金流（亿元）': row.cashflow == null ? '—' : fmt(row.cashflow / 1e8, 2),
+                  [t('公司')]: company.symbol,
+                  [t('报告期')]: row.date,
+                  [t("营业收入（亿元）")]: row.revenue == null ? '—' : fmt(row.revenue / 1e8, 2),
+                  [t("归母净利润（亿元）")]: row.profit == null ? '—' : fmt(row.profit / 1e8, 2),
+                  [t("经营现金流（亿元）")]: row.cashflow == null ? '—' : fmt(row.cashflow / 1e8, 2),
                 })),
               )}
             />
@@ -185,33 +179,32 @@ export default function Runs({ setPage }: PageProps) {
           ))}
         </Panel>
       )}
-      <Panel title="已保存分析">
+      <Panel title={t("已保存分析")}>
         {loading ? (
-          <Empty>正在读取记录…</Empty>
+          <Empty>{t("正在读取记录…")}</Empty>
         ) : visible.length ? (
           <div className="table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>分析</th>
-                  <th>类型</th>
-                  <th>保存时间（UTC）</th>
-                  <th>操作</th>
+                  <th>{t("分析")}</th>
+                  <th>{t("类型")}</th>
+                  <th>{t("保存时间（UTC）")}</th>
+                  <th>{t("操作")}</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((record) => (
                   <tr key={record.id}>
                     <td>{record.title}</td>
-                    <td>{names[record.kind]}</td>
+                    <td>{t(names[record.kind])}</td>
                     <td>
                       {record.created_at.slice(0, 16).replace('T', ' ')}
                       <small>v{record.version}</small>
                     </td>
                     <td>
                       <button className="text-button" onClick={() => setSelected(record)}>
-                        查看记录
-                      </button>
+                        {t("查看记录")}</button>
                     </td>
                   </tr>
                 ))}
@@ -221,8 +214,8 @@ export default function Runs({ setPage }: PageProps) {
         ) : (
           <Empty>
             {activeProject && projectOnly
-              ? '该项目还没有关联分析，可在研究页面保存，或切换查看全部记录。'
-              : '还没有已保存的分析。'}
+              ? t("该项目还没有关联分析，可在研究页面保存，或切换查看全部记录。")
+              : t("还没有已保存的分析。")}
           </Empty>
         )}
       </Panel>

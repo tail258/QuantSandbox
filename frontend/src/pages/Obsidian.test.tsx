@@ -3,6 +3,7 @@ import {act,cleanup,render,screen,waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import Obsidian from './Obsidian';
+import {setLocale} from '../i18n';
 import {api} from '../api';
 import {post,request} from '../http';
 
@@ -17,12 +18,13 @@ const preview={markdown,title:'库存与价格',filename:'note.md',files:[{path:
 const props={status:{},reload:async()=>{},setPage:()=>{}};
 let config={enabled:false,vault_path:'',folder:'QuantSandbox'};
 beforeEach(()=>{
+ setLocale('zh');
  vi.clearAllMocks();context.activeProject=null;config={enabled:false,vault_path:'',folder:'QuantSandbox'};history.replaceState(null,'','#obsidian');
  vi.mocked(api).mockResolvedValue(research);
  vi.mocked(request).mockImplementation(async(url,options)=>{if(url==='/obsidian/config')return options?.method==='PUT'?JSON.parse(options.body as string):config;if(url==='/runs')return {runs:[{id:'simulation1',name:'基线实验',status:'completed'},{id:'pending',name:'排队实验',status:'queued'}]};throw new Error('Unexpected '+url)});
  vi.mocked(post).mockResolvedValue(preview);
 });
-afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks()});
+afterEach(()=>{cleanup();setLocale('en');vi.unstubAllGlobals();vi.restoreAllMocks()});
 async function selectResearch(user:ReturnType<typeof userEvent.setup>){await screen.findByRole('option',{name:/库存与价格/});await user.selectOptions(screen.getByLabelText('已保存记录'),'research1')}
 
 describe('Obsidian research-note flow',()=>{
@@ -94,4 +96,17 @@ describe('Obsidian research-note flow',()=>{
   expect(post).toHaveBeenCalledWith('/obsidian/publish',{kind:'research',run_id:'research1',title:undefined,notes:undefined,preview_token:'exact-token'});
   await screen.findByText('已写入本次笔记：note.md');expect(screen.queryByRole('article')).toBeNull();
  });
+});
+
+it('switches reading controls without changing the selected record, note draft or preview token',async()=>{
+ const user=userEvent.setup();render(<Obsidian {...props}/>);await selectResearch(user);
+ await user.click(screen.getByText('调整标题与补充结论（可选）'));await user.type(screen.getByLabelText('补充结论'),'保留我的判断');
+ await user.click(screen.getByRole('button',{name:'生成预览'}));await screen.findByRole('article');
+ act(()=>setLocale('en'));
+ expect((screen.getByLabelText('Saved record') as HTMLSelectElement).value).toBe('research1');
+ expect((screen.getByLabelText('Additional conclusions') as HTMLTextAreaElement).value).toBe('保留我的判断');
+ expect(screen.getByRole('article').textContent).toContain('配对样本 n=123');
+ await user.click(screen.getByRole('button',{name:'Markdown source'}));expect(screen.getByLabelText('Markdown source').textContent).toBe(markdown);
+ expect(vi.mocked(post).mock.calls).toHaveLength(1);
+ act(()=>setLocale('zh'));expect(screen.getByRole('button',{name:'生成预览'})).toBeTruthy();
 });

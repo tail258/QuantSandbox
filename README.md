@@ -1,10 +1,46 @@
-# QuantSandbox · 投资研究与量化分析工作台
+<p align="center">
+  <img src="docs/images/readme-header.svg" alt="QuantSandbox — research, test, reproduce" width="100%" />
+</p>
 
-在同一个本地工作台完成公司研究、产业观察、统计分析与策略验证。浏览器用于交互，Python 负责数据、计算和证据；Codex 可通过 CLI 与 API 调用同一套逻辑。市场操作只读，没有券商连接或实盘下单。
+<h1 align="center">QuantSandbox</h1>
+<p align="center"><strong>Investment research you can trace, test, and reproduce.</strong></p>
+<p align="center">A local-first workbench for company research, industry cycles, statistics, and strategy backtesting.</p>
 
-## 打开与安装
+<p align="center">
+  <a href="https://github.com/tail258/QuantSandbox/actions/workflows/check.yml"><img src="https://github.com/tail258/QuantSandbox/actions/workflows/check.yml/badge.svg" alt="Checks" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-959DA7?style=flat-square" alt="MIT license" /></a>
+  <img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?style=flat-square" alt="Python 3.12 or newer" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square" alt="React 19" />
+  <img src="https://img.shields.io/badge/markets-read--only-F5C542?style=flat-square" alt="Read-only market access" />
+</p>
 
-已有环境双击 `start.cmd`，打开 **http://127.0.0.1:8766**。只监听本机；不会自动刷新行情、设置定时任务或写入笔记库。
+<p align="center">
+  <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a><br />
+  <a href="#quick-start">Quick start</a> · <a href="#reproduce-an-experiment">Reproduce an experiment</a> · <a href="CONTRIBUTING.md">Contribute</a> · <a href="https://github.com/tail258/QuantSandbox/releases">Releases</a>
+</p>
+
+---
+
+## One workspace, from question to evidence
+
+QuantSandbox connects a research question to its data, assumptions, experiments, and saved conclusions. The browser, CLI, and API share the same Python calculations. Data and research records stay in your local workspace; public market data is fetched only when requested.
+
+<table>
+  <tr>
+    <td width="50%"><strong>01 · Research</strong><br />Compare quarterly financials and peers using company-specific templates. Track industry indicators, ETF flows, and disclosed institutional holdings.</td>
+    <td width="50%"><strong>02 · Test</strong><br />Explore correlation, lags, and conditional probabilities. Inspect execution, fees, cash, and positions through backtests and historical replay.</td>
+  </tr>
+  <tr>
+    <td><strong>03 · Reproduce</strong><br />Keep fixed snapshots, saved parameters, source metadata, and execution fingerprints. Export an evidence bundle and recompute it.</td>
+    <td><strong>04 · Keep your workflow</strong><br />English or Chinese. Classic light or Financial terminal. Download Markdown, SVG charts, and attachments; Obsidian integration is optional.</td>
+  </tr>
+</table>
+
+The workbench focuses on mainland China's A-share market. It includes rubber-industry observations and four built-in strategies: moving-average crossover, Bollinger bands, RSI reversal, and momentum. Experiments include historical forks, cost stress, parameter sensitivity, rolling out-of-sample evaluation, and blind replay.
+
+## Quick start
+
+**Windows:** Python **3.12+**, Node.js **22.12+**, and PowerShell **7+**. Python 3.12 and Node 22 are used by CI. Installation needs internet access for dependencies; the synthetic example runs offline after installation.
 
 ```powershell
 git clone https://github.com/tail258/QuantSandbox.git
@@ -13,72 +49,78 @@ Set-Location QuantSandbox
 .\start.cmd
 ```
 
-Windows 需要 Python 3.12+、Node.js 22.12+ 和 PowerShell 7。安装包括公开行情依赖与前端构建；生产运行只需要 Python。停止：`pwsh -NoProfile -File stop.ps1`。Codex 启动使用 `pwsh -NoProfile -File start.ps1 -NoBrowser`。
+Open **http://127.0.0.1:8766**. The service listens on your computer only. On later visits, run `start.cmd`; stop this workspace with `pwsh -NoProfile -File stop.ps1`.
 
-## 页面与研究流程
+The interface starts in **English**. Use the top-bar language and **Appearance** selectors to switch to Chinese or the dark Financial terminal theme. Preferences stay in the current browser. Company names, user notes, source documents, and archived evidence retain their original text.
 
-v3.1 按研究、市场观察、验证、数据与归档组织导航。首页采用项目列表与当前详情并排的布局，提供概览、证据、实验和结论；创建项目按需打开。当前项目贯穿页面，已保存的公司比较、统计和策略实验保留项目关联。
+<details>
+<summary><strong>Manual setup, including Linux/macOS</strong></summary>
 
-财务和统计优先展示结果，参数及公司配置按需展开。策略终端联动行情与成交证据，账本和决策分栏查看；实验室先展示已有结果，再创建对照。手机采用研究、市场、验证、更多四类入口。
+The backend and frontend are tested on Linux; the convenience launchers target Windows. From the repository root, create and activate a Python virtual environment using your platform's commands, then run:
 
-Obsidian 默认显示排版笔记，可切换 Markdown 源码；本机路径设置按需打开。
+```sh
+python -m pip install -r requirements-dev.txt -c requirements-lock.txt
+npm ci --prefix frontend
+npm run build --prefix frontend
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8766
+```
 
-### 从观察到归档
+For production-only Python dependencies, use `requirements.txt`; add `requirements-market.txt` for live providers. The offline reproduction tool requires the development dependencies. The lock file constrains Python dependency versions, and `npm ci` uses the committed package lock.
 
-1. 在数据中心获取行情、财报或公告，检查来源、实际截止日与口径。
-2. 按公司配置比较单季度财务，观察产业指标或 ETF 资金，保存统计分析。
-3. 新建研究项目，关联研究问题和分析记录；将固定的未复权股票行情送入策略实验。
-4. 在策略实验中核对资金、成交与信号，创建历史分叉，检验费用、参数和滚动样本外表现。
-5. 保存证据，选择导出 Markdown、附件或完整可复算研究包。
+</details>
 
-| 模块 | 能力 |
+## Reproduce an experiment
+
+Run a complete synthetic example without starting a server or downloading market data:
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 scripts/reproduce.py
+```
+
+The command creates isolated temporary stores, runs a backtest, exports its evidence, imports the original JSON into a second store, and verifies the replay against fixed expectations. It exits with a failure if verification fails. To retain the generated example in a new, empty directory:
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 scripts/reproduce.py --output exports/repro-demo
+```
+
+This example is explicitly synthetic. Your existing datasets, research projects, and notes are not used. See the [reproducibility guide](docs/reproducibility.md) for the fixture, checks, and tagged-release instructions, and the [release guide](docs/releases.md) for archive checksums and rebuilding from source.
+
+## A practical research loop
+
+1. **Choose a question.** Create a project and select its securities, company template, peers, and research focus.
+2. **Check the inputs.** Reuse cached data or fetch/import a snapshot. Read each series' actual coverage, source, unit, reporting period, and availability date.
+3. **Compare and test.** Analyze quarterly financials and industry series, then bridge a specific unadjusted-price snapshot into strategy experiments.
+4. **Inspect the path.** Review signals, next-session execution, fees, positions, and the account ledger. Compare alternative assumptions on the same inputs.
+5. **Save the evidence.** Link analyses and experiments to the project, save a conclusion, and choose what to export.
+
+## Data and calculation boundaries
+
+| Topic | What the workbench preserves |
 | --- | --- |
-| 研究项目 | 统一研究问题与股票池，关联研究分析、回测和后续实验 |
-| 数据中心 | 沪深日线、估值字段、三大财报、公告、股东户数、RU0、带来源 CSV 导入 |
-| 财务与公司配置 | 自动拆单季度；一般工商、周期、银行、保险模板；同行、指标和观察重点 |
-| 产业周期 | 橡胶价格与行业指标观察，缺失数据保留导入与检索入口 |
-| ETF 与国家队足迹 | 交易所份额、净值估算申赎、历史分位、融资对照、原文持仓和公告时间线 |
-| 统计实验 | 变换、领先滞后、条件概率、样本量、基准与 Wilson 区间 |
-| 策略实验 | 多标的共享资金、双均线/布林带/RSI/动量、成交解释、分叉、压力/参数/滚动样本外实验 |
-| 逐日推演 | 按游标推进，盲测与揭晓，保留成交、决策和账户审计 |
-| 证据归档 | 原始快照、参数、引擎指纹、结果导出与重放校验 |
-| Obsidian | 可选 Markdown 与附件包；本机配置笔记库，预览后手动写入 |
+| Missing data | Missing values remain missing. Provider failures stay visible; live-data failures never silently become synthetic prices. |
+| Financial statements | Income and cash-flow cumulative amounts are split into quarters; balance-sheet balances are not differenced. Ratios are recomputed. Currently revised statements are not a complete historical point-in-time archive. |
+| Statistics | Transform, alignment, frequency, lag direction, sample count, baseline, and interval accompany the result. Correlation and repeated parameter searches need separate validation. |
+| Execution | Daily closing signals execute no earlier than the next tradable session's open. Explicit suspension and price-limit fields survive snapshots and replay. Corporate actions and complete delisting returns are not yet booked. |
+| Market proxies | ETF subscriptions/redemptions and margin data cannot identify a specific trading entity. State-backed holdings require original disclosure evidence. RU0 is a vendor continuous series, not a directly tradable total-return contract. |
+| Evidence | Content hashes check integrity. Import replays the saved inputs with the current engine and reports differences. A hash is not third-party certification. |
 
-## 数据与证据
+Method details: [backtesting](docs/RESEARCH_NOTES.md) · [financials and statistics](docs/methodology.md) · [ETF flows](docs/etf-methodology.md) · [institutional disclosures](docs/national-methodology.md). These detailed methodology documents are currently in Chinese; the [API contract](docs/API_CONTRACT.md), [architecture](docs/ARCHITECTURE.md), and reproduction guide are in English.
 
-研究快照存于 `data/workbench/workbench.sqlite`，策略任务与行情快照存于 `data/`；数据与代码分开。桥接实验会引用指定的研究行情快照，保留来源与哈希，不因后续更新而改变。前后复权行情不能作为当前账户模型的成交价格。
+## Local data and optional notes
 
-真实行情依赖公开上游，失败会明确报告；不会静默替换成演示行情。演示来源为合成数据。新克隆仓库没有本机缓存或个人研究档案，可先运行合成示例，再手动获取真实数据。
+The strategy store lives under `data/`; company research uses `data/workbench/`. Local data, exports, attachments, company profiles, environment settings, dependencies, and build output are excluded from Git and release packages. Back up `data/` and `exports/` separately when the service is stopped.
 
-财报接口可能返回当前修订版本；公告日已知也不代表拥有完整历史披露版本。国家队持仓以原文实体证据为准，ETF 申赎与融资只是市场代理。固定当前成分名单回看历史不作为时点选股证据。策略采用日线撮合，尚未记账公司行为或完整退市收益；收益需结合假设阅读。数据提供的停牌、涨停价和跌停价字段会保留到缓存、快照和证据包，并参与内容哈希；未知字段值保持 null，行情源未提供时不自行推断。
+Markdown and attachment downloads work without a notebook configuration. Direct Obsidian writing is an explicit, previewed action that creates new files and refuses to overwrite existing notes. There is no vault scan, background sync, or scheduled publishing. See the [integration contract](docs/obsidian.md) (Chinese).
 
-方法见 [统计与财务](docs/methodology.md)、[ETF](docs/etf-methodology.md)、[国家队足迹](docs/national-methodology.md)、[回测口径](docs/RESEARCH_NOTES.md)。
-
-## 可选 Obsidian 模块
-
-工作台不依赖任何特定笔记库。默认下载通用 Markdown 与附件包，无需配置或读取笔记库。需要直接保存时，由用户在 Obsidian 页面配置本机目录，预览内容，再手动执行单次写入。配置仅保存在本机，不上传 GitHub；不扫描私人笔记、不自动同步、不覆盖已有文件。
-
-详见 [Obsidian 模块](docs/obsidian.md)。
-
-## 迁移与备份
-
-原有策略数据位置保持兼容。旧研究工作区的数据可以只读复制到本工作区：
+## Develop and contribute
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/import_research.py --source '旧研究工作区的绝对路径'
+pwsh -NoProfile -File scripts/dev.ps1
+pwsh -NoProfile -File scripts/check.ps1
 ```
 
-工具使用 SQLite 在线备份保留已提交 WAL 数据，并拒绝覆盖已有目标。复制研究附件时排除外部交接文件和可执行辅助脚本；不复制私人笔记库。原工作区保持独立。迁移细节见 [融合与迁移](docs/MIGRATION.md)。
+Development uses frontend port **5174** and API port **8000**. Production uses **8766**. Interactive API documentation is at `/docs`; the research CLI starts with `python -m backend.workbench.cli status`.
 
-备份时先停止本工作台，再备份整个 `data/`、`exports/`，以及按需保存 `data/.local/obsidian.json`。GitHub 只同步代码、依赖与方法文档；这些本地数据、笔记库配置、虚拟环境与构建产物均被忽略。
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). Report a reproducible problem using the [bug form](https://github.com/tail258/QuantSandbox/issues/new?template=bug_report.yml), propose an improvement using the [feature form](https://github.com/tail258/QuantSandbox/issues/new?template=feature_request.yml), and follow [SECURITY.md](SECURITY.md) for sensitive reports. The [roadmap](docs/ROADMAP.md) separates current capabilities from planned work. Changes are recorded in the [changelog](CHANGELOG.md).
 
-## 开发与 Codex
-
-先读 [AGENTS.md](AGENTS.md)。研究 CLI：`python -m backend.workbench.cli status`；策略 API 保持 `/api/runs` 等路径，研究 API 为 `/api/research/*`，统一文档为 `/docs`。
-
-```powershell
-pwsh -File scripts/dev.ps1
-pwsh -File scripts/check.ps1
-```
-
-开发前端默认 http://127.0.0.1:5174，API 默认 8000；生产默认 8766。支持通过脚本参数改端口。架构见 [ARCHITECTURE.md](docs/ARCHITECTURE.md)，接口见 [API_CONTRACT.md](docs/API_CONTRACT.md)。
+Licensed under [MIT](LICENSE). Market-data providers have their own terms; the software license does not grant redistribution rights to third-party datasets.

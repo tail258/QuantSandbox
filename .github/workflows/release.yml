@@ -1,0 +1,84 @@
+name: Source release
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Validate tag and deterministic source package
+        shell: bash
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "${GITHUB_REF}^{commit}")"
+          python scripts/package_release.py --ref "$GITHUB_REF_NAME" --output release-assets
+          python scripts/package_release.py --ref "$GITHUB_REF_NAME" --output release-repeat
+          cmp release-assets/SHA256SUMS release-repeat/SHA256SUMS
+          (cd release-assets && sha256sum --check SHA256SUMS)
+      - name: Install locked backend dependencies
+        run: python -m pip install -r requirements-dev.txt -c requirements-lock.txt
+      - name: Backend tests
+        run: python -m pytest
+      - name: Offline reproduction
+        run: python scripts/reproduce.py
+      - name: Frontend install, tests and production build
+        run: |
+          npm ci --prefix frontend
+          npm test --prefix frontend
+          npm run build --prefix frontend
+      - name: Keep validated source assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-release
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: source-release
+          path: release-assets
+      - name: Verify and publish assets without replacing existing files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          cd release-assets
+          sha256sum --check SHA256SUMS
+          assets=("QuantSandbox-${RELEASE_TAG}-source.zip" SHA256SUMS release-manifest.json)
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}"
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" --verify-tag --title "QuantSandbox ${RELEASE_TAG}" --generate-notes
+          fi

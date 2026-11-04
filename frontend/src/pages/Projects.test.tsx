@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Projects from './Projects'
+import { setLocale } from '../i18n'
 import { api } from '../api'
 import { post, request } from '../http'
 const context = vi.hoisted(() => ({
@@ -20,6 +21,7 @@ vi.mock('../api', async () => {
 vi.mock('../http', () => ({ post: vi.fn(), request: vi.fn() }))
 const props = { status: { datasets: [] }, reload: async () => {}, setPage: vi.fn() }
 beforeEach(() => {
+  setLocale('zh')
   vi.clearAllMocks()
   const project = {
     id: 'p1',
@@ -48,6 +50,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  setLocale('en')
   vi.restoreAllMocks()
 })
 describe('project master-detail workspace', () => {
@@ -91,4 +94,22 @@ describe('project master-detail workspace', () => {
     await user.click(screen.getByRole('button', { name: '查看' }))
     expect(props.setPage).toHaveBeenCalledWith('runs?run=r1')
   })
+})
+
+it('switches project controls live while preserving user-entered text', async () => {
+  render(<Projects {...props} />)
+  await screen.findByRole('heading', { name: '研究项目' })
+  await userEvent.click(screen.getByRole('button', { name: '新建项目' }))
+  const input = screen.getByRole('textbox', { name: '项目名称' })
+  await userEvent.type(input, '用户项目 Alpha')
+  act(() => setLocale('en'))
+  expect(screen.getByRole('heading', { name: 'Research projects' })).toBeTruthy()
+  expect(screen.getByRole('dialog', { name: 'New research project' })).toBeTruthy()
+  expect((screen.getByRole('textbox', { name: 'Project name' }) as HTMLInputElement).value).toBe(
+    '用户项目 Alpha',
+  )
+  act(() => setLocale('zh'))
+  expect((screen.getByRole('textbox', { name: '项目名称' }) as HTMLInputElement).value).toBe(
+    '用户项目 Alpha',
+  )
 })

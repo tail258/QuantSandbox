@@ -3,6 +3,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Finance from './Finance'
+import { setLocale } from '../i18n'
 import { api } from '../api'
 import { post } from '../http'
 const context = vi.hoisted(() => ({
@@ -35,6 +36,7 @@ const props = {
   setPage: () => {},
 }
 beforeEach(() => {
+  setLocale('zh')
   vi.clearAllMocks()
   context.activeProject = { id: 'bank-project', symbols: ['000001', '600036'] }
   context.reloadProjects.mockResolvedValue(undefined)
@@ -70,6 +72,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  setLocale('en')
   vi.restoreAllMocks()
 })
 describe('project-driven company research', () => {
@@ -160,4 +163,39 @@ describe('project-driven company research', () => {
     expect(screen.getByText('公告 B')).toBeTruthy()
     expect(screen.queryByText('公告 A')).toBeNull()
   })
+})
+
+it('retains metric identifiers when cached profile metrics have no backend label', async () => {
+  setLocale('en')
+  const partial = {
+    ...props,
+    status: { ...props.status, metrics: { profit: '归母净利润' } },
+  }
+  render(<Finance {...partial} />)
+  await screen.findByRole('columnheader', { name: 'assets' })
+  expect(
+    screen.getByRole('columnheader', { name: 'Net profit attributable to parent' }),
+  ).toBeTruthy()
+  expect(screen.getByRole('cell', { name: /000001/ })).toBeTruthy()
+  act(() => setLocale('zh'))
+  expect(screen.getByRole('columnheader', { name: 'assets' })).toBeTruthy()
+  expect(screen.getByRole('columnheader', { name: '归母净利润' })).toBeTruthy()
+})
+
+it('shows the research-focus prompt when both profile and template omit focus', async () => {
+  const original = vi.mocked(api).getMockImplementation()!
+  vi.mocked(api).mockImplementation(async (path, ...args) => {
+    const result = await original(path, ...args)
+    if (path.startsWith('/profile/')) {
+      const { focus: _focus, ...profile } = result as Record<string, unknown>
+      return profile
+    }
+    return result
+  })
+  setLocale('en')
+  render(<Finance {...props} />)
+  await screen.findByText('银行样例')
+  expect(
+    screen.getByText('Select metrics and research priorities in company settings.'),
+  ).toBeTruthy()
 })

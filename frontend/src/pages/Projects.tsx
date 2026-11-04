@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   ArrowRight,
@@ -22,6 +23,7 @@ const tabs = [
 ] as const
 
 export default function Projects({ setPage, status }: PageProps) {
+  useLocale()
   const { projects, activeProject, selectProject, reloadProjects, linkRecord } = useProject()
   const [records, setRecords] = useState<Row[]>([])
   const [simulations, setSimulations] = useState<Row[]>([])
@@ -147,7 +149,7 @@ export default function Projects({ setPage, status }: PageProps) {
                   {link.kind === 'research' ? <FileText size={15} /> : <FlaskConical size={15} />}
                 </span>
                 <strong>
-                  {record?.title || record?.name || (loading ? '正在读取记录' : '已保存记录')}
+                  {record?.title || record?.name || (loading ? t('正在读取记录') : t('已保存记录'))}
                 </strong>
                 <small>
                   {link.linked_at.slice(0, 16).replace('T', ' ')} UTC
@@ -155,19 +157,18 @@ export default function Projects({ setPage, status }: PageProps) {
                     ? ' · ' +
                       (
                         {
-                          completed: '已完成',
-                          queued: '排队中',
-                          running: '计算中',
-                          failed: '失败',
-                          cancelled: '已取消',
+                          completed: t('已完成'),
+                          queued: t('排队中'),
+                          running: t('计算中'),
+                          failed: t('失败'),
+                          cancelled: t('已取消'),
                         } as Row
                       )[record.status]
                     : ''}
                 </small>
               </div>
               <button className="secondary" onClick={() => openRecord(link)}>
-                查看
-                <ArrowRight size={13} />
+                {t('查看')} <ArrowRight size={13} />
               </button>
             </article>
           )
@@ -180,28 +181,28 @@ export default function Projects({ setPage, status }: PageProps) {
     <>
       <div className="page-title">
         <div>
-          <h1>研究项目</h1>
-          <p>选择一个问题，继续观察、验证和归档。</p>
+          <h1>{t('研究项目')}</h1>
+          <p>{t('选择一个问题，继续观察、验证和归档。')}</p>
         </div>
         <button
           className={activeProject ? 'secondary' : undefined}
           onClick={() => setShowCreate(true)}
         >
           <FolderPlus size={16} />
-          新建项目
+          {t('新建项目')}{' '}
         </button>
       </div>
-      {error && <Note tone="warn">{error}</Note>}
-      {message && <Note>{message}</Note>}
+      {error && <Note tone="warn">{t(error)}</Note>}
+      {message && <Note>{t(message)}</Note>}
       <div className="project-workspace">
-        <section className="project-directory" aria-label="项目目录">
+        <section className="project-directory" aria-label={t('项目目录')}>
           <div className="project-directory-head">
             <strong>
-              项目档案 <small>{projects.length}</small>
+              {t('项目档案')} <small>{projects.length}</small>
             </strong>
             <button
               className="text-button"
-              aria-label="刷新项目"
+              aria-label={t('刷新项目')}
               disabled={busy}
               onClick={() => action(reloadProjects)}
             >
@@ -209,10 +210,10 @@ export default function Projects({ setPage, status }: PageProps) {
             </button>
           </div>
           <input
-            aria-label="搜索项目"
+            aria-label={t('搜索项目')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="名称或证券代码"
+            placeholder={t('名称或证券代码')}
           />
           <div className="project-list">
             {visibleProjects.map((project) => (
@@ -223,40 +224,40 @@ export default function Projects({ setPage, status }: PageProps) {
                 onClick={() => selectProject(project.id).catch((e) => setError(e.message))}
               >
                 <strong>{project.name}</strong>
-                <small>{project.symbols.join(' · ') || '未关联证券'}</small>
+                <small>{project.symbols.join(' · ') || t('未关联证券')}</small>
                 <span>
-                  {project.links.length} 条记录 · {project.updated_at.slice(5, 10)}
+                  {t('{count} 条记录', { count: project.links.length })} ·{' '}
+                  {project.updated_at.slice(5, 10)}
                 </span>
               </button>
             ))}
           </div>
           {!projects.length && !loading && (
-            <p className="muted">创建项目，保存你的第一个研究问题。</p>
+            <p className="muted">{t('创建项目，保存你的第一个研究问题。')}</p>
           )}
           {projects.length > 0 && !visibleProjects.length && (
-            <p className="muted">没有匹配的项目。</p>
+            <p className="muted">{t('没有匹配的项目。')}</p>
           )}
         </section>
-        <section className="project-detail" aria-label="当前项目详情">
+        <section className="project-detail" aria-label={t('当前项目详情')}>
           {activeProject ? (
             <>
               <div className="project-detail-heading">
                 <div>
-                  <span className="eyebrow">当前研究</span>
+                  <span className="eyebrow">{t('当前研究')}</span>
                   <h2>{activeProject.name}</h2>
-                  <p>{activeProject.question || '尚未填写研究问题。'}</p>
+                  <p>{activeProject.question || t('尚未填写研究问题。')}</p>
                   <div className="project-summary">
-                    <span>{activeProject.symbols.join(' · ') || '未关联证券'}</span>
-                    <span>{researchLinks.length} 条研究证据</span>
-                    <span>{experimentLinks.length} 项策略实验</span>
+                    <span>{activeProject.symbols.join(' · ') || t('未关联证券')}</span>
+                    <span>{t('{count} 条研究证据', { count: researchLinks.length })}</span>
+                    <span>{t('{count} 项策略实验', { count: experimentLinks.length })}</span>
                   </div>
                 </div>
                 <button onClick={continueResearch}>
-                  继续研究
-                  <ArrowRight size={15} />
+                  {t('继续研究')} <ArrowRight size={15} />
                 </button>
               </div>
-              <div className="tabs project-detail-tabs" role="tablist" aria-label="项目内容">
+              <div className="tabs project-detail-tabs" role="tablist" aria-label={t('项目内容')}>
                 {tabs.map(([id, label]) => (
                   <button
                     role="tab"
@@ -265,50 +266,49 @@ export default function Projects({ setPage, status }: PageProps) {
                     onClick={() => setTab(id)}
                     key={id}
                   >
-                    {label}
+                    {t(label)}
                   </button>
                 ))}
               </div>
               {tab === 'overview' && (
                 <>
-                  <Panel title="研究路径">
+                  <Panel title={t('研究路径')}>
                     <div className="project-next-actions">
                       <button className="secondary" onClick={() => setPage('finance')}>
-                        <strong>公司与财务</strong>
-                        <small>沿用公司模板与同行</small>
+                        <strong>{t('公司与财务')}</strong>
+                        <small>{t('沿用公司模板与同行')}</small>
                         <ArrowRight size={15} />
                       </button>
                       <button className="secondary" onClick={() => setPage('stats')}>
-                        <strong>统计检验</strong>
-                        <small>对照变量与历史区间</small>
+                        <strong>{t('统计检验')}</strong>
+                        <small>{t('对照变量与历史区间')}</small>
                         <ArrowRight size={15} />
                       </button>
                       <button className="secondary" onClick={() => setPage('simulation')}>
-                        <strong>策略验证</strong>
-                        <small>固定行情，创建对照</small>
+                        <strong>{t('策略验证')}</strong>
+                        <small>{t('固定行情，创建对照')}</small>
                         <ArrowRight size={15} />
                       </button>
                     </div>
                   </Panel>
-                  <Panel title="最近关联">
+                  <Panel title={t('最近关联')}>
                     {recordList(
                       recent.slice(0, 4),
-                      '还没有关联记录。完成分析后会自动加入当前项目，也可在研究证据中手动关联。',
+                      t('还没有关联记录。完成分析后会自动加入当前项目，也可在研究证据中手动关联。'),
                     )}
                   </Panel>
                   <Panel
-                    title="关联证券的数据覆盖"
+                    title={t('关联证券的数据覆盖')}
                     action={
                       <button className="text-button" onClick={() => setPage('data')}>
-                        打开数据中心
-                        <ArrowRight size={13} />
+                        {t('打开数据中心')} <ArrowRight size={13} />
                       </button>
                     }
                   >
                     {status.loadFailed ? (
-                      <p className="muted">暂无法读取数据覆盖，请重试数据服务。</p>
+                      <p className="muted">{t('暂无法读取数据覆盖，请重试数据服务。')}</p>
                     ) : status.loading ? (
-                      <p className="muted">正在读取数据覆盖…</p>
+                      <p className="muted">{t('正在读取数据覆盖…')}</p>
                     ) : chosenDatasets.length ? (
                       <div className="coverage-list">
                         {chosenDatasets.map((s: Row) => (
@@ -317,32 +317,32 @@ export default function Projects({ setPage, status }: PageProps) {
                             <span>
                               {(
                                 {
-                                  quotes: '股票行情',
-                                  finance: '财务报表',
-                                  holders: '股东户数',
-                                  announcements: '公告',
-                                  verification: '交叉核验',
-                                  closing_snapshot: '盘后快照',
+                                  quotes: t('股票行情'),
+                                  finance: t('财务报表'),
+                                  holders: t('股东户数'),
+                                  announcements: t('公告'),
+                                  verification: t('交叉核验'),
+                                  closing_snapshot: t('盘后快照'),
                                 } as Row
-                              )[s.kind] || '其他研究数据'}
+                              )[s.kind] || t('其他研究数据')}
                             </span>
                             <small>
-                              {s.start || '—'} 至 {s.end || '—'} · {s.source}
+                              {s.start || '—'} {t('至')} {s.end || '—'} · {s.source}
                             </small>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <p className="muted">
-                        当前证券没有匹配的本地缓存。可前往数据中心手动获取或导入。
+                        {t('当前证券没有匹配的本地缓存。可前往数据中心手动获取或导入。')}{' '}
                       </p>
                     )}
                   </Panel>
                   {activeProject.conclusion && (
-                    <Panel title="已保存结论">
+                    <Panel title={t('已保存结论')}>
                       <p className="project-conclusion-text">{activeProject.conclusion}</p>
                       <button className="text-button" onClick={() => setTab('conclusion')}>
-                        继续编辑
+                        {t('继续编辑')}{' '}
                       </button>
                     </Panel>
                   )}
@@ -351,26 +351,26 @@ export default function Projects({ setPage, status }: PageProps) {
               {(tab === 'evidence' || tab === 'experiments') && (
                 <>
                   <Panel
-                    title={tab === 'evidence' ? '研究证据' : '策略实验'}
+                    title={tab === 'evidence' ? t('研究证据') : t('策略实验')}
                     action={
                       <button
                         className="secondary"
                         onClick={() => setPage(tab === 'evidence' ? 'finance' : 'simulation')}
                       >
-                        开始新的{tab === 'evidence' ? '研究' : '实验'}
+                        {tab === 'evidence' ? t('开始新的研究') : t('开始新的实验')}
                       </button>
                     }
                   >
                     {recordList(
                       tab === 'evidence' ? researchLinks : experimentLinks,
-                      '该项目暂无此类记录。',
+                      t('该项目暂无此类记录。'),
                     )}
                   </Panel>
                   <details className="workspace-details">
-                    <summary>关联已有记录</summary>
+                    <summary>{t('关联已有记录')}</summary>
                     <div className="controls wrap">
                       <label>
-                        记录类型
+                        {t('记录类型')}{' '}
                         <select
                           value={kind}
                           onChange={(e) => {
@@ -378,14 +378,14 @@ export default function Projects({ setPage, status }: PageProps) {
                             setRunId('')
                           }}
                         >
-                          <option value="research">研究分析</option>
-                          <option value="simulation">策略实验</option>
+                          <option value="research">{t('研究分析')}</option>
+                          <option value="simulation">{t('策略实验')}</option>
                         </select>
                       </label>
                       <label className="grow">
-                        已保存记录
+                        {t('已保存记录')}{' '}
                         <select value={runId} onChange={(e) => setRunId(e.target.value)}>
-                          <option value="">选择记录</option>
+                          <option value="">{t('选择记录')}</option>
                           {choices.map((r) => (
                             <option value={r.id} key={r.id}>
                               {r.title || r.name}
@@ -395,7 +395,7 @@ export default function Projects({ setPage, status }: PageProps) {
                       </label>
                       <LoadingButton busy={busy} disabled={!runId} onClick={link}>
                         <Link2 size={14} />
-                        关联
+                        {t('关联')}{' '}
                       </LoadingButton>
                     </div>
                   </details>
@@ -403,86 +403,87 @@ export default function Projects({ setPage, status }: PageProps) {
               )}
               {tab === 'conclusion' && (
                 <Panel
-                  title="项目结论"
+                  title={t('项目结论')}
                   action={
                     <LoadingButton busy={busy} onClick={saveConclusion}>
                       <Save size={14} />
-                      保存结论
+                      {t('保存结论')}{' '}
                     </LoadingButton>
                   }
                 >
                   <label>
-                    判断、反例与后续观察
+                    {t('判断、反例与后续观察')}{' '}
                     <textarea
                       className="project-conclusion-editor"
-                      aria-label="项目结论"
+                      aria-label={t('项目结论')}
                       value={conclusion}
                       onChange={(e) => setConclusion(e.target.value)}
-                      placeholder="记录当前判断、证据、尚未解决的问题，以及什么变化会改变结论。"
+                      placeholder={t(
+                        '记录当前判断、证据、尚未解决的问题，以及什么变化会改变结论。',
+                      )}
                     />
                   </label>
-                  <p className="muted">保存在当前研究项目中；需要笔记时再选择导出。</p>
+                  <p className="muted">{t('保存在当前研究项目中；需要笔记时再选择导出。')}</p>
                   <button className="secondary" onClick={() => setPage('obsidian')}>
-                    整理为笔记
-                    <ArrowRight size={13} />
+                    {t('整理为笔记')} <ArrowRight size={13} />
                   </button>
                 </Panel>
               )}
               <details className="workspace-details technical-details">
-                <summary>项目记录信息</summary>
+                <summary>{t('项目记录信息')}</summary>
                 <p>
-                  创建 {activeProject.created_at.slice(0, 16).replace('T', ' ')} UTC · 更新{' '}
-                  {activeProject.updated_at.slice(0, 16).replace('T', ' ')} UTC
+                  {t('创建')} {activeProject.created_at.slice(0, 16).replace('T', ' ')}{' '}
+                  {t('UTC · 更新')} {activeProject.updated_at.slice(0, 16).replace('T', ' ')} UTC
                 </p>
                 <code>{activeProject.id}</code>
               </details>
             </>
           ) : (
-            <Panel title="选择一个研究项目">
+            <Panel title={t('选择一个研究项目')}>
               <Empty>
-                从左侧选择项目，或新建一个研究问题。
-                <button onClick={() => setShowCreate(true)}>新建项目</button>
+                {t('从左侧选择项目，或新建一个研究问题。')}{' '}
+                <button onClick={() => setShowCreate(true)}>{t('新建项目')}</button>
               </Empty>
             </Panel>
           )}
         </section>
       </div>
       {showCreate && (
-        <Dialog title="新建研究项目" onClose={() => setShowCreate(false)}>
+        <Dialog title={t('新建研究项目')} onClose={() => setShowCreate(false)}>
           <form onSubmit={create}>
             <label>
-              项目名称
+              {t('项目名称')}{' '}
               <input
                 autoFocus
                 required
                 maxLength={100}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="例如：橡胶周期与公司盈利"
+                placeholder={t('例如：橡胶周期与公司盈利')}
               />
             </label>
             <label>
-              研究问题
+              {t('研究问题')}{' '}
               <textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="希望验证什么，怎样的结果会改变你的判断？"
+                placeholder={t('希望验证什么，怎样的结果会改变你的判断？')}
               />
             </label>
             <label>
-              关联证券
+              {t('关联证券')}{' '}
               <input
                 value={symbols}
                 onChange={(e) => setSymbols(e.target.value)}
-                placeholder="六位证券代码，逗号分隔"
+                placeholder={t('六位证券代码，逗号分隔')}
               />
             </label>
             <div className="dialog-actions">
               <button type="button" className="secondary" onClick={() => setShowCreate(false)}>
-                取消
+                {t('取消')}{' '}
               </button>
               <LoadingButton busy={busy} type="submit">
-                创建项目
+                {t('创建项目')}{' '}
               </LoadingButton>
             </div>
           </form>

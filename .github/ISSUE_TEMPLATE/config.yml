@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/tail258/QuantSandbox/security/advisories/new
+    about: Send a sensitive report to maintainers without creating a public issue.
+  - name: Contributing guide
+    url: https://github.com/tail258/QuantSandbox/blob/main/CONTRIBUTING.md
+    about: Setup, repository boundaries, reproducible evidence, and validation.

@@ -8,7 +8,7 @@ from contextvars import ContextVar
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = Path(os.environ.get('QUANT_WORKBENCH_DATA', Path(os.environ.get('QUANT_SANDBOX_DATA_DIR', ROOT / 'data')) / 'workbench'))
-VERSION = '3.1.0'
+from backend.version import VERSION
 _scope_data = ContextVar('workbench_data', default=None)
 
 def data_path():

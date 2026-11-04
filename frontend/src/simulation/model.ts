@@ -1,3 +1,4 @@
+import {t} from '../i18n';
 import type {Row} from '../api';
 
 export const kindName:Row={backtest:'基线回测',branch:'历史分叉',pressure:'压力实验',parameter:'参数敏感性',walk_forward:'滚动样本外'};
@@ -35,13 +36,13 @@ export function sourceName(run:Row){
 }
 
 export function sampleCaption(run:Row,session?:Row|null){
- if(session)return `${session.result?.series?.length??0} 个当前可见交易日`;
+ if(session)return t("{v0} 个当前可见交易日", {v0:session.result?.series?.length??0});
  if(['queued','running'].includes(run.status))return '样本待计算';
  if(run.status!=='completed')return '未生成结果';
  const result=run.result||{};
- if(run.kind==='pressure')return Array.isArray(result.scenarios)?`${result.scenarios.length} 组压力情景`:'情景数量未记录';
- if(run.kind==='parameter')return Array.isArray(result.variants)?`${result.variants.length} 个参数候选`:'候选数量未记录';
- return Array.isArray(result.series)?`${result.series.length} 个${run.kind==='walk_forward'?'样本外':'账户'}交易日`:'样本数量未记录';
+ if(run.kind==='pressure')return Array.isArray(result.scenarios)?t("{v0} 组压力情景", {v0:result.scenarios.length}):'情景数量未记录';
+ if(run.kind==='parameter')return Array.isArray(result.variants)?t("{v0} 个参数候选", {v0:result.variants.length}):'候选数量未记录';
+ return Array.isArray(result.series)?t("{v0} 个{v1}交易日", {v0:result.series.length,v1:t(run.kind==='walk_forward'?'样本外':'账户')}):'样本数量未记录';
 }
 
 export function fixedMetric(value:unknown){
@@ -49,29 +50,29 @@ export function fixedMetric(value:unknown){
 }
 
 const changeLabels:Record<string,(value:any)=>string>={
- commission_rate:value=>`佣金率 ${(value*100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:4})}%`,
- min_commission:value=>`最低佣金 ${fixedMetric(value)} 元`,
- tax_rate:value=>`卖出税率 ${(value*100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:4})}%`,
- slippage_bps:value=>`双边滑点 ${value} bps`,
- execution_delay:value=>`执行延迟 ${value} 个交易日`,
- position_size:value=>`单标的仓位 ${fixedMetric(value*100)}%`,
- initial_cash:value=>`初始资金 ${fixedMetric(value)} 元`,
- lot_size:value=>`每手 ${value} 股`,
- t_plus_one:value=>`T+1 ${value?'开启':'关闭'}`,
+ commission_rate:value=>t("佣金率 {v0}%", {v0:(value*100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:4})}),
+ min_commission:value=>t("最低佣金 {v0} 元", {v0:fixedMetric(value)}),
+ tax_rate:value=>t("卖出税率 {v0}%", {v0:(value*100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:4})}),
+ slippage_bps:value=>t("双边滑点 {v0} bps", {v0:value}),
+ execution_delay:value=>t("执行延迟 {v0} 个交易日", {v0:value}),
+ position_size:value=>t("单标的仓位 {v0}%", {v0:fixedMetric(value*100)}),
+ initial_cash:value=>t("初始资金 {v0} 元", {v0:fixedMetric(value)}),
+ lot_size:value=>t("每手 {v0} 股", {v0:value}),
+ t_plus_one:value=>t("T+1 {v0}", {v0:t(value?'开启':'关闭')}),
 };
 
 /** Each scenario has a complete caption even when its changed fields differ. */
 export function describeChanges(changes:Row){
  const rows=Object.entries(changes||{});
  const known=rows.filter(([key])=>key in changeLabels).map(([key,value])=>changeLabels[key](value));
- if(rows.some(([key])=>!(key in changeLabels)))known.push('其他设置详见原始证据');
- return known.length?known.join('；'):'沿用基线设置';
+ if(rows.some(([key])=>!(key in changeLabels)))known.push(t('其他设置详见原始证据'));
+ return known.length?known.join(t('；')):t('沿用基线设置');
 }
 
 const parameterNames:Row={fast_period:'快线周期',slow_period:'慢线周期',window:'观察周期',std_dev:'标准差倍数',buy_threshold:'买入 RSI 阈值',sell_threshold:'卖出 RSI 阈值',threshold:'动量阈值'};
-export const parameterName=(key:string)=>parameterNames[key]||'策略参数';
+export const parameterName=(key:string)=>t(parameterNames[key]||'策略参数');
 export function parameterValue(key:string,value:number){
- if(['fast_period','slow_period','window'].includes(key))return `${value} 个交易日`;
+ if(['fast_period','slow_period','window'].includes(key))return t("{v0} 个交易日", {v0:value});
  if(key==='threshold')return `${fixedMetric(value*100)}%`;
  return fixedMetric(value);
 }

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import {setLocale} from '../i18n';
 import {act,cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import type {Row} from '../api';
@@ -30,7 +31,7 @@ function list(){return Object.values(database).map(run=>({...run,metrics:run.res
 const pageProps={status:{datasets:[],series:[]},reload:vi.fn(),setPage:vi.fn()};
 function deferred<T>(){let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>{resolve=r});return {promise,resolve}}
 
-beforeEach(()=>{
+beforeEach(()=>{setLocale('zh');
  localStorage.clear();location.hash='simulation?run=run-a';
  Object.defineProperty(window,'innerWidth',{value:1200,writable:true,configurable:true});
  database={'run-a':fixture(),'run-b':fixture('run-b')};
@@ -47,9 +48,21 @@ beforeEach(()=>{
   const child=fixture('created',body?.kind||'backtest');database[child.id]=child;return child;
  });
 });
-afterEach(()=>{cleanup();vi.clearAllMocks()});
+afterEach(()=>{cleanup();setLocale('en');vi.clearAllMocks()});
 
 describe('Simulation workbench interactions',()=>{
+ it('switches labels live without losing the selected record or an edited draft',async()=>{
+  render(<Simulation {...pageProps}/>);
+  await screen.findByRole('tab',{name:'笔记与证据'});
+  fireEvent.click(screen.getByRole('tab',{name:'笔记与证据'}));
+  fireEvent.change(screen.getByLabelText('观察与结论'),{target:{value:'Keep my original 中文 research'}});
+  act(()=>setLocale('en'));
+  expect(screen.getByRole('heading',{name:'Strategies & replay'})).toBeTruthy();
+  expect((screen.getByLabelText('Observations & conclusions') as HTMLTextAreaElement).value).toBe('Keep my original 中文 research');
+  expect((screen.getByLabelText('Current strategy record') as HTMLSelectElement).value).toBe('run-a');
+  act(()=>setLocale('zh'));
+  expect((screen.getByLabelText('观察与结论') as HTMLTextAreaElement).value).toBe('Keep my original 中文 research');
+ });
  it('shows completed pressure sample counts and every scenario change with Chinese labels and units',async()=>{
   const pressure=fixture('run-a','pressure');
   const metrics={total_return:12.34567,max_drawdown:-6.789,trade_count:8,total_fees:123.456};

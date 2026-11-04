@@ -1,2 +1,2 @@
-"""Internal compatibility metadata, independent of product naming."""
-VERSION = "3.1.0"
+"""QuantSandbox application version; engine and evidence formats version independently."""
+VERSION = "3.2.0"

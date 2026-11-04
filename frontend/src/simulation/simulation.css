@@ -139,3 +139,43 @@
  .simulation-drawer-head h2 { font-size: 20px; }
  .simulation-drawer-footer { position: sticky; bottom: -23px; background: white; padding-bottom: 20px; margin-bottom: -23px; box-shadow: 0 -6px 16px #fff; }
 }
+
+/* Terminal-only treatments preserve the original light workspace. */
+[data-theme="terminal"] .simulation-page {
+ --simulation-chart-selection: #f5c54216;
+ font-variant-numeric: tabular-nums;
+}
+[data-theme="terminal"] .simulation-record-summary > small { color: #d4b965; }
+[data-theme="terminal"] .simulation-view-tabs { border-color: #30363d; }
+[data-theme="terminal"] .simulation-inspector,
+[data-theme="terminal"] .simulation-drawer,
+[data-theme="terminal"] .simulation-record-menu > summary,
+[data-theme="terminal"] .simulation-record-menu[open] > div { background: #191d21; border-color: #30363d; color: #e9edf2; }
+[data-theme="terminal"] .simulation-inspector { border-radius: 6px; }
+[data-theme="terminal"] .simulation-inspector-heading,
+[data-theme="terminal"] .simulation-reason,
+[data-theme="terminal"] .simulation-decision-cards article,
+[data-theme="terminal"] .simulation-form .cost-details,
+[data-theme="terminal"] .simulation-snapshots { border-color: #30363d; }
+[data-theme="terminal"] .simulation-candle-chart .candle-toolbar > span b { color: #e9edf2; }
+[data-theme="terminal"] .simulation-candle-chart > small,
+[data-theme="terminal"] .simulation-chart-foot,
+[data-theme="terminal"] .simulation-inspector-heading small,
+[data-theme="terminal"] .simulation-evidence-grid dt,
+[data-theme="terminal"] .simulation-inspector summary,
+[data-theme="terminal"] .simulation-ledger-head,
+[data-theme="terminal"] .simulation-results td > small,
+[data-theme="terminal"] .simulation-snapshots > small,
+[data-theme="terminal"] .simulation-trade-card small { color: #959da7; }
+[data-theme="terminal"] .simulation-inspector .eyebrow,
+[data-theme="terminal"] .simulation-drawer .eyebrow,
+[data-theme="terminal"] .simulation-snapshots legend { color: #f5c542; }
+[data-theme="terminal"] .simulation-ledger-table .selected-row,
+[data-theme="terminal"] .simulation-trade-card.selected { background: #f5c54212; }
+[data-theme="terminal"] .simulation-trade-card { background: #191d21; color: #e9edf2; border-color: #30363d; }
+[data-theme="terminal"] .simulation-trade-card.selected { border-color: #f5c54280; }
+[data-theme="terminal"] .simulation-record-menu[open] > div { box-shadow: 0 12px 35px #0006; }
+[data-theme="terminal"] .simulation-backdrop { background: #0009; }
+[data-theme="terminal"] .simulation-drawer { box-shadow: -12px 0 45px #0006; }
+[data-theme="terminal"] .simulation-drawer-footer { background: #191d21; box-shadow: 0 -6px 16px #191d21; }
+[data-theme="terminal"] .simulation-candle-chart svg [role="button"]:focus-visible { outline: 1px solid #f5c542; }

@@ -1,3 +1,5 @@
+import { t, useLocale, setLocale } from './i18n'
+import { setTheme, useTheme } from './theme'
 import { Component, lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react'
 import {
   Database,
@@ -80,9 +82,9 @@ class PageBoundary extends Component<{ children: ReactNode }, { failed: boolean 
   render() {
     return this.state.failed ? (
       <Note tone="warn">
-        <p>页面加载失败，请重新加载工作台。</p>
+        <p>{t('页面加载失败，请重新加载工作台。')}</p>
         <button className="secondary" onClick={() => location.reload()}>
-          重新加载
+          {t('重新加载')}
         </button>
       </Note>
     ) : (
@@ -91,6 +93,8 @@ class PageBoundary extends Component<{ children: ReactNode }, { failed: boolean 
   }
 }
 function Workspace() {
+  const locale = useLocale()
+  const theme = useTheme()
   const { activeProject, projects, selectProject, error: projectError } = useProject()
   const [page, setPage] = useState(route)
   const [mobileGroup, setMobileGroup] = useState('research')
@@ -149,12 +153,12 @@ function Workspace() {
     <div className="shell workspace-shell">
       <aside className="workspace-rail">
         <a className="brand" href={'#' + withProject('projects', activeProject?.id)}>
-          QuantSandbox<small>投资研究 · 策略验证</small>
+          QuantSandbox<small>{t('投资研究 · 策略验证')}</small>
         </a>
-        <nav className="grouped-navigation" aria-label="主导航">
+        <nav className="grouped-navigation" aria-label={t('主导航')}>
           {groups.map((group) => (
             <div className="nav-group" key={group.id}>
-              <span className="nav-group-label">{group.label}</span>
+              <span className="nav-group-label">{t(group.label)}</span>
               {group.items.map(([id, label, Icon]) => (
                 <button
                   key={id}
@@ -163,7 +167,7 @@ function Workspace() {
                   onClick={() => go(id)}
                 >
                   <Icon size={18} />
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
@@ -172,25 +176,25 @@ function Workspace() {
         <div className="sidebar-foot">
           <ShieldCheck size={16} />
           <div>
-            本地研究 · 市场只读<small>数据与计算留在你的设备</small>
+            {t('本地研究 · 市场只读')}<small>{t('数据与计算留在你的设备')}</small>
           </div>
         </div>
       </aside>
       <div className="workspace">
         <header className="workspace-header">
           <div className="workspace-breadcrumb">
-            <span>{activeGroup.label}</span>
+            <span>{t(activeGroup.label)}</span>
             <b>/</b>
-            <strong>{active[1]}</strong>
+            <strong>{t(active[1])}</strong>
           </div>
           <label className="header-project-picker">
-            <span>当前项目</span>
+            <span>{t('当前项目')}</span>
             <select
-              aria-label="当前研究项目"
+              aria-label={t('当前研究项目')}
               value={activeProject?.id || ''}
               onChange={(e) => selectProject(e.target.value).catch(() => {})}
             >
-              <option value="">独立研究</option>
+              <option value="">{t('独立研究')}</option>
               {projects.map((p) => (
                 <option value={p.id} key={p.id}>
                   {p.name}
@@ -198,12 +202,26 @@ function Workspace() {
               ))}
             </select>
           </label>
+          <label className="language-picker theme-picker">
+            <span>{t('界面主题')}</span>
+            <select aria-label={t('界面主题')} value={theme} onChange={e => setTheme(e.target.value === 'terminal' ? 'terminal' : 'light')}>
+              <option value="light">{t('经典浅色')}</option>
+              <option value="terminal">{t('金融终端')}</option>
+            </select>
+          </label>
+          <label className="language-picker">
+            <span>{t('界面语言')}</span>
+            <select aria-label="Language / 语言" value={locale} onChange={e => setLocale(e.target.value === 'zh' ? 'zh' : 'en')}>
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+            </select>
+          </label>
           <span className="workspace-local">
             <i />
-            本地运行
+            {t('本地运行')}
           </span>
         </header>
-        <div className="mobile-navigation" aria-label="手机导航">
+        <div className="mobile-navigation" aria-label={t('手机导航')}>
           <div className="mobile-primary">
             {[
               ['research', '研究'],
@@ -218,7 +236,7 @@ function Workspace() {
                   setMoreOpen(false)
                 }}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
             <button
@@ -226,14 +244,14 @@ function Workspace() {
               aria-expanded={moreOpen}
               onClick={() => setMoreOpen(!moreOpen)}
             >
-              {moreOpen ? <X size={15} /> : <Menu size={15} />}更多
+              {moreOpen ? <X size={15} /> : <Menu size={15} />}{t('更多')}
             </button>
           </div>
           <div className="mobile-secondary">
             {(moreOpen ? groups[3].items : mobileItems).map(([id, label, Icon]) => (
               <button key={id} className={page === id ? 'selected' : ''} onClick={() => go(id)}>
                 <Icon size={14} />
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
@@ -241,31 +259,31 @@ function Workspace() {
         {activeProject && page !== 'projects' && (
           <div className="project-context-strip">
             <a href={'#' + withProject('projects', activeProject.id)}>{activeProject.name}</a>
-            <span>{activeProject.symbols.join(' · ') || '未关联证券'}</span>
-            <small>{activeProject.question || '项目研究'}</small>
+            <span>{activeProject.symbols.join(' · ') || t('未关联证券')}</span>
+            <small>{activeProject.question || t('项目研究')}</small>
           </div>
         )}
         <main>
           {error && (
             <Note tone="warn">
-              研究数据服务：{error}
+              {t('研究数据服务：')}{t(error)}
               <button
                 className="text-button"
                 onClick={() => reload().catch((e) => setError(e.message))}
               >
-                重试
+                {t('重试')}
               </button>
             </Note>
           )}
-          {projectError && <Note tone="warn">{projectError}</Note>}
+          {projectError && <Note tone="warn">{t(projectError)}</Note>}
           <PageBoundary key={page}>
-            <Suspense fallback={<Empty>正在打开{active[1]}…</Empty>}>
+            <Suspense fallback={<Empty>{t('正在打开{page}…', {page: t(active[1])})}</Empty>}>
               <Page status={status} reload={reload} setPage={go} />
             </Suspense>
           </PageBoundary>
         </main>
         <footer>
-          QuantSandbox <span>来源可追溯 · 参数可复算 · 研究与验证相连</span>
+          QuantSandbox <span>{t('来源可追溯 · 参数可复算 · 研究与验证相连')}</span>
         </footer>
       </div>
     </div>

@@ -33,6 +33,8 @@ htmlcov/
 test-results/
 playwright-report/
 .local/
+release-assets/
+release-repeat/
 
 # 4. 编辑器与系统配置
 .vscode/

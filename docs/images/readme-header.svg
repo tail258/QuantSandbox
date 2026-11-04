@@ -1,36 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" fill="none">
-  <title>QuantSandbox — 本地量化研究工作台</title>
-  <desc>深色品牌页眉，以分叉轨迹表达策略回放与对照研究。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" fill="none">
+  <title>QuantSandbox — research, test, reproduce</title>
+  <desc>A workflow illustration connecting traceable inputs, experiments, and reproducible evidence. The chart is decorative and is not a backtest result.</desc>
   <defs>
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M40 0H0V40" stroke="#252D3C" stroke-opacity=".42"/>
-    </pattern>
-    <linearGradient id="fade" x1="690" y1="180" x2="1250" y2="180" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#8EA9FF" stop-opacity=".12"/>
-      <stop offset="1" stop-color="#8EA9FF" stop-opacity=".8"/>
-    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" stroke="#30363D" stroke-opacity=".32"/></pattern>
+    <linearGradient id="line" x1="744" y1="270" x2="1192" y2="118" gradientUnits="userSpaceOnUse"><stop stop-color="#F5C542" stop-opacity=".35"/><stop offset="1" stop-color="#F5C542"/></linearGradient>
+    <linearGradient id="area" x1="962" y1="118" x2="962" y2="300" gradientUnits="userSpaceOnUse"><stop stop-color="#F5C542" stop-opacity=".13"/><stop offset="1" stop-color="#F5C542" stop-opacity="0"/></linearGradient>
   </defs>
-  <rect width="1280" height="360" rx="20" fill="#10141D"/>
-  <rect x="680" y="20" width="580" height="320" fill="url(#grid)"/>
-  <path d="M707 222H795L843 183H913L956 137H1018L1060 96H1188" stroke="url(#fade)" stroke-width="3"/>
-  <path d="M913 183H975L1024 222H1103L1142 190H1215" stroke="#60C4A4" stroke-width="2" stroke-opacity=".7"/>
-  <path d="M913 183H955L1006 268H1153" stroke="#75839C" stroke-width="2" stroke-dasharray="5 7" stroke-opacity=".55"/>
-  <circle cx="913" cy="183" r="20" fill="#8EA9FF" fill-opacity=".08"/>
-  <circle cx="913" cy="183" r="7" fill="#10141D" stroke="#8EA9FF" stroke-width="3"/>
-  <circle cx="1188" cy="96" r="5" fill="#8EA9FF"/>
-  <circle cx="1215" cy="190" r="5" fill="#60C4A4"/>
-  <circle cx="1153" cy="268" r="4" fill="#75839C"/>
-  <g transform="translate(58 55) scale(1.3)" stroke="#8EA9FF" stroke-width="5">
-    <path d="M11 5a12 12 0 0 1 10 0M25 10a12 12 0 0 1 0 12M21 27a12 12 0 0 1-10 0M6 22a12 12 0 0 1 0-12"/>
-  </g>
-  <g font-family="Segoe UI, Inter, Arial, sans-serif">
-    <text x="114" y="82" font-size="13" letter-spacing="3" fill="#9BA9C3">LOCAL QUANT RESEARCH</text>
-    <text x="60" y="165" font-size="61" font-weight="650" letter-spacing="-2" fill="#EEF2FA">QuantSandbox</text>
-    <text x="63" y="214" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="23" fill="#B9C5DA">本地量化研究工作台</text>
-    <path d="M63 251H650" stroke="#2A3344"/>
-    <text x="63" y="288" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" letter-spacing="2" fill="#8EA9FF">策略回测</text>
-    <text x="199" y="288" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" letter-spacing="2" fill="#A4B1CA">历史分叉</text>
-    <text x="335" y="288" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" letter-spacing="2" fill="#A4B1CA">稳健性实验</text>
-    <text x="490" y="288" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" letter-spacing="2" fill="#60C4A4">证据重放</text>
+  <rect width="1280" height="400" rx="20" fill="#0B0D0F"/>
+  <rect x="1" y="1" width="1278" height="398" rx="19" stroke="#30363D"/>
+  <rect x="670" y="1" width="609" height="398" rx="19" fill="url(#grid)"/>
+  <g font-family="Inter,Segoe UI,Arial,sans-serif">
+    <rect x="54" y="48" width="34" height="34" rx="8" fill="#252B31" stroke="#30363D"/>
+    <path d="M63 71V63M71 71V57M79 71V60" stroke="#F5C542" stroke-width="3" stroke-linecap="round"/>
+    <text x="102" y="71" fill="#959DA7" font-size="13" letter-spacing="2">LOCAL RESEARCH / OPEN SOURCE</text>
+    <text x="52" y="160" fill="#E9EDF2" font-size="64" font-weight="700" letter-spacing="-2">QuantSandbox</text>
+    <text x="56" y="204" fill="#959DA7" font-size="20">Follow the data. Test the assumptions.</text>
+    <text x="56" y="234" fill="#959DA7" font-size="20">Keep the evidence.</text>
+    <g font-size="12" font-weight="600" letter-spacing=".4">
+      <rect x="56" y="290" width="114" height="34" rx="17" fill="#191D21" stroke="#30363D"/><text x="77" y="312" fill="#F5C542">LOCAL-FIRST</text>
+      <rect x="180" y="290" width="114" height="34" rx="17" fill="#191D21" stroke="#30363D"/><text x="201" y="312" fill="#E9EDF2">READ-ONLY</text>
+      <rect x="304" y="290" width="158" height="34" rx="17" fill="#191D21" stroke="#30363D"/><text x="325" y="312" fill="#E9EDF2">REPRODUCIBLE</text>
+    </g>
+    <rect x="714" y="62" width="510" height="272" rx="14" fill="#191D21" stroke="#30363D"/>
+    <circle cx="736" cy="85" r="3" fill="#F5C542"/><text x="748" y="89" fill="#959DA7" font-size="11" letter-spacing="1.2">QUESTION → SNAPSHOT → EXPERIMENT → EVIDENCE</text>
+    <path d="M740 116H1198M740 160H1198M740 204H1198M740 248H1198" stroke="#30363D" stroke-width="1"/>
+    <path d="M740 260L772 254L804 264L836 237L868 242L900 218L932 225L964 189L996 196L1028 166L1060 175L1092 140L1124 148L1156 124L1198 111V286H740Z" fill="url(#area)"/>
+    <path d="M740 263L790 250L840 253L890 236L940 233L990 213L1040 216L1090 193L1140 185L1198 174" stroke="#6C7884" stroke-width="2" stroke-dasharray="5 5"/>
+    <path d="M740 260L772 254L804 264L836 237L868 242L900 218L932 225L964 189L996 196L1028 166L1060 175L1092 140L1124 148L1156 124L1198 111" stroke="url(#line)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="1198" cy="111" r="5" fill="#F5C542"/>
+    <text x="740" y="312" fill="#959DA7" font-size="10" letter-spacing=".9">WORKFLOW ILLUSTRATION · NOT MARKET PERFORMANCE</text>
   </g>
 </svg>
