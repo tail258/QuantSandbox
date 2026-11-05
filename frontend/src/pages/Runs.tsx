@@ -10,6 +10,7 @@ const names: Row = {
   etf: 'ETF资金',
   statistics: '统计实验',
   finance: '财务比较',
+  us_equity: '美股研究',
 }
 export default function Runs({ setPage }: PageProps) {
  useLocale();
@@ -111,7 +112,7 @@ export default function Runs({ setPage }: PageProps) {
         >
           <div className="research-method-strip">
             <span>
-              {t(names[selected.kind])} · {selected.created_at.slice(0, 16).replace('T', ' ')} UTC
+              {t(names[selected.kind] || selected.kind)} · {selected.created_at.slice(0, 16).replace('T', ' ')} UTC
             </span>
             <span>{t("计算版本")}{selected.version}</span>
           </div>
@@ -161,6 +162,7 @@ export default function Runs({ setPage }: PageProps) {
               <RawTable rows={selected.result.daily} />
             </details>
           )}
+          {selected.kind === 'us_equity' && <><p>{t('美股研究')} · {selected.result.instrument?.symbol} · USD</p><RawTable rows={selected.result.financials?.map((row: Row) => ({period_end: row.period_end, ...Object.fromEntries(Object.entries(row.metrics || {}).map(([key, fact]) => [key, (fact as Row | null)?.value ?? null])), free_cashflow: row.free_cashflow})) || []} /><button className="secondary" onClick={() => setPage('us')}>{t('美股研究')}</button></>}
           {selected.kind === 'finance' && (
             <RawTable
               rows={selected.result.flatMap((company: Row) =>
@@ -197,7 +199,7 @@ export default function Runs({ setPage }: PageProps) {
                 {visible.map((record) => (
                   <tr key={record.id}>
                     <td>{record.title}</td>
-                    <td>{t(names[record.kind])}</td>
+                    <td>{t(names[record.kind] || record.kind)}</td>
                     <td>
                       {record.created_at.slice(0, 16).replace('T', ' ')}
                       <small>v{record.version}</small>

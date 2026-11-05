@@ -3,10 +3,11 @@ import { coreMessages } from './i18n/core'
 import { researchMessages } from './i18n/research'
 import { simulationMessages } from './i18n/simulation'
 import { marketMessages } from './i18n/market'
+import { usMessages } from './i18n/us'
 
 export type Locale = 'en' | 'zh'
 export const localeStorageKey = 'quantsandbox.locale'
-const messages: Record<string, string> = { ...coreMessages, ...researchMessages, ...simulationMessages, ...marketMessages }
+const messages: Record<string, string> = { ...coreMessages, ...researchMessages, ...simulationMessages, ...marketMessages, ...usMessages }
 const listeners = new Set<() => void>()
 function readLocale(): Locale {
   try { return localStorage.getItem(localeStorageKey) === 'zh' ? 'zh' : 'en' } catch { return 'en' }

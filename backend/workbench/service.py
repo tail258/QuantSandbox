@@ -151,6 +151,9 @@ def research(p):
 
 def export_run(rid):
     run=store.get_run(rid)
+    if run['kind']=='us_equity':
+        from .us_export import export_run as export_us
+        return export_us(run)
     if run['kind']=='national':
         from . import national
         return national.export_run(run)

@@ -183,6 +183,9 @@ class ObsidianService:
         if request.get("notes"):
             body += "## 研究备注\n\n" + _redact(request["notes"]) + "\n\n"
         body += "## 结果摘要\n\n"
+        if run.get("kind") == "us_equity":
+            from backend.workbench.us_export import report
+            body += report(result, True) + "\n"
         if isinstance(result, dict):
             if run.get("kind") == "statistics":
                 body += f'相关系数：{_number(result.get("correlation"))}；配对样本 n={_number(result.get("n"))}。\n\n'

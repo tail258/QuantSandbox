@@ -8,6 +8,9 @@ def main():
     p=argparse.ArgumentParser(description='QuantSandbox：供 Codex 调用的只读投资研究接口；JSON 输出')
     sub=p.add_subparsers(dest='cmd',required=True)
     for c in ['status','series','runs']:sub.add_parser(c)
+    a=sub.add_parser('us-company', help='Cached US company research; use --refresh for explicit SEC acquisition')
+    a.add_argument('--symbol', default='MCD')
+    a.add_argument('--refresh', action='store_true')
     f=sub.add_parser('fetch');f.add_argument('kind',choices=['quotes','finance','announcements','rubber','holders']);f.add_argument('--symbol',default='600519');f.add_argument('--start',default='2023-01-01');f.add_argument('--end',default=__import__('datetime').date.today().isoformat());f.add_argument('--adjust',default='3',choices=['1','2','3']);f.add_argument('--force',action='store_true')
     for c in ['analyze','profile']:
         a=sub.add_parser(c);a.add_argument('file',help='UTF-8 JSON 参数文件')
@@ -25,6 +28,9 @@ def main():
     args=vars(p.parse_args());cmd=args.pop('cmd')
     try:
         if cmd=='status':r=service.status()
+        elif cmd=='us-company':
+            from . import us_equities
+            r=us_equities.refresh(args['symbol']) if args['refresh'] else us_equities.dashboard(args['symbol'])
         elif cmd=='series':r=service.all_series()
         elif cmd=='runs':r=store.runs()
         elif cmd=='fetch':r=service.retrieve(args)
