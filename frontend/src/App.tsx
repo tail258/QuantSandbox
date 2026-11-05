@@ -26,6 +26,7 @@ const pages = {
   projects: lazy(() => import('./pages/Projects')),
   data: lazy(() => import('./pages/DataCenter')),
   finance: lazy(() => import('./pages/Finance')),
+  us: lazy(() => import('./pages/UsEquities')),
   industry: lazy(() => import('./pages/Industry')),
   etf: lazy(() => import('./pages/EtfFlows')),
   national: lazy(() => import('./pages/NationalTeam')),
@@ -42,6 +43,7 @@ const groups = [
     items: [
       ['projects', '研究项目', FolderKanban],
       ['finance', '公司与财务', ChartNoAxesCombined],
+      ['us', '美股研究', ChartLine],
       ['industry', '产业周期', ChartLine],
     ],
   },

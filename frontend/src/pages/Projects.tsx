@@ -135,7 +135,7 @@ export default function Projects({ setPage, status }: PageProps) {
   }
   const continueResearch = () => {
     if (recent[0]) openRecord(recent[0])
-    else setPage(activeProject?.symbols.length ? 'finance' : 'stats')
+    else setPage(activeProject?.symbols.some(s => s.startsWith('US:')) ? 'us' : activeProject?.symbols.length ? 'finance' : 'stats')
   }
   const recordList = (items: ProjectLink[], empty: string) =>
     items.length ? (
@@ -274,7 +274,7 @@ export default function Projects({ setPage, status }: PageProps) {
                 <>
                   <Panel title={t('研究路径')}>
                     <div className="project-next-actions">
-                      <button className="secondary" onClick={() => setPage('finance')}>
+                      <button className="secondary" onClick={() => setPage(activeProject.symbols.some(s => s.startsWith('US:')) ? 'us' : 'finance')}>
                         <strong>{t('公司与财务')}</strong>
                         <small>{t('沿用公司模板与同行')}</small>
                         <ArrowRight size={15} />
@@ -355,7 +355,7 @@ export default function Projects({ setPage, status }: PageProps) {
                     action={
                       <button
                         className="secondary"
-                        onClick={() => setPage(tab === 'evidence' ? 'finance' : 'simulation')}
+                        onClick={() => setPage(tab === 'evidence' ? (activeProject.symbols.some(s => s.startsWith('US:')) ? 'us' : 'finance') : 'simulation')}
                       >
                         {tab === 'evidence' ? t('开始新的研究') : t('开始新的实验')}
                       </button>
@@ -475,7 +475,7 @@ export default function Projects({ setPage, status }: PageProps) {
               <input
                 value={symbols}
                 onChange={(e) => setSymbols(e.target.value)}
-                placeholder={t('六位证券代码，逗号分隔')}
+                placeholder={t('六位代码或 US:MCD，逗号分隔')}
               />
             </label>
             <div className="dialog-actions">

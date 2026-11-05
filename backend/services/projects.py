@@ -9,6 +9,7 @@ from pathlib import Path
 
 from backend.core.data_format import utc_now
 from backend.services.errors import ResearchError
+from backend.instruments import valid_project_symbol
 
 
 class ProjectStore:
@@ -59,8 +60,8 @@ class ProjectStore:
     def create(self, name: str, question: str, symbols: list[str]):
         if not name.strip():
             raise ResearchError(422, '请填写研究项目名称')
-        if len(symbols) != len(set(symbols)) or any(not re.fullmatch(r'\d{6}', s) for s in symbols):
-            raise ResearchError(422, '证券代码须为不重复的六位数字')
+        if len(symbols) != len(set(symbols)) or any(not valid_project_symbol(s) for s in symbols):
+            raise ResearchError(422, '证券代码须为不重复的六位数字或 US:MCD 格式')
         identifier, now = uuid.uuid4().hex, utc_now()
         with self.connect() as connection:
             connection.execute('INSERT INTO projects(id,name,question,symbols,created_at,updated_at) VALUES(?,?,?,?,?,?)',
@@ -79,8 +80,8 @@ class ProjectStore:
             changes['name'] = changes['name'].strip()
         if 'symbols' in changes:
             symbols = changes['symbols']
-            if len(symbols) != len(set(symbols)) or any(not re.fullmatch(r'\d{6}', s) for s in symbols):
-                raise ResearchError(422, '证券代码须为不重复的六位数字')
+            if len(symbols) != len(set(symbols)) or any(not valid_project_symbol(s) for s in symbols):
+                raise ResearchError(422, '证券代码须为不重复的六位数字或 US:MCD 格式')
             changes['symbols'] = json.dumps(symbols)
         changes['updated_at'] = utc_now()
         assignments = ','.join(f'{key}=?' for key in changes)

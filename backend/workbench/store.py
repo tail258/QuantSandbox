@@ -72,7 +72,7 @@ def get_snapshots(ids):
 
 def catalog():
     with db() as c:
-        rows = c.execute("SELECT payload FROM snapshots s WHERE key NOT GLOB 'etf_cache:*' AND fetched=(SELECT MAX(fetched) FROM snapshots t WHERE t.key=s.key) ORDER BY fetched DESC").fetchall()
+        rows = c.execute("SELECT payload FROM snapshots s WHERE key NOT GLOB 'etf_cache:*' AND key NOT GLOB 'us_equities:attempt:*' AND fetched=(SELECT MAX(fetched) FROM snapshots t WHERE t.key=s.key) ORDER BY fetched DESC").fetchall()
     return [json.loads(r[0]) for r in rows]
 
 def event(kind, message):

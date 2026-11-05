@@ -110,6 +110,8 @@ def create_app(root: str | Path | None = None, *, run_jobs: bool = True) -> Fast
     for routes in (catalog, runs, sessions, evidence, notes, assistant, projects):
         application.include_router(routes.router)
     application.include_router(workbench_router)
+    from backend.api.routes import us_equities
+    application.include_router(us_equities.router)
     from backend.api.routes import obsidian
     application.include_router(obsidian.router)
     dist = Path(__file__).resolve().parents[1] / 'frontend' / 'dist'

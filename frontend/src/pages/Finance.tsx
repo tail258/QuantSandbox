@@ -11,7 +11,7 @@ const ratioMetrics = ['gross_margin', 'net_margin', 'leverage', 'cash_ratio']
 export default function Finance({ status, reload }: PageProps) {
   useLocale()
   const { activeProject, reloadProjects } = useProject()
-  const [symbol, setSymbol] = useState(activeProject?.symbols[0] || '600519')
+  const [symbol, setSymbol] = useState(activeProject?.symbols.find(s => /^\d{6}$/.test(s)) || '600519')
   const [profile, setProfile] = useState<Row>({
     template: 'general',
     name: '',
@@ -30,7 +30,7 @@ export default function Finance({ status, reload }: PageProps) {
   const [period, setPeriod] = useState('common')
   const projectSymbols = activeProject?.symbols.join(',') || ''
   useEffect(() => {
-    const first = activeProject?.symbols[0]
+    const first = activeProject?.symbols.find(s => /^\d{6}$/.test(s))
     if (first) setSymbol(first)
   }, [activeProject?.id, projectSymbols])
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function Finance({ status, reload }: PageProps) {
         if (!alive) return
         setProfile(p)
         setPeerText(
-          [...new Set([...(activeProject?.symbols || []).filter((s) => s !== symbol), ...p.peers])]
+          [...new Set([...(activeProject?.symbols || []).filter((s) => s !== symbol && /^\d{6}$/.test(s)), ...p.peers])]
             .slice(0, 5)
             .join(','),
         )
@@ -93,7 +93,7 @@ export default function Finance({ status, reload }: PageProps) {
       alive = false
     }
   }, [symbols.join(',')])
-  const currentProfile = () => ({ ...profile, peers: symbols.filter((s) => s !== symbol) })
+  const currentProfile = () => ({ ...profile, peers: symbols.filter((s) => s !== symbol && /^\d{6}$/.test(s)) })
   async function saveProfile() {
     await api('/profile/' + symbol, currentProfile())
     setMsg('公司配置已保存。')

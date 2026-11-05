@@ -38,6 +38,10 @@ QuantSandbox connects a research question to its data, assumptions, experiments,
 
 The workbench focuses on mainland China's A-share market. It includes rubber-industry observations and four built-in strategies: moving-average crossover, Bollinger bands, RSI reversal, and momentum. Experiments include historical forks, cost stress, parameter sensitivity, rolling out-of-sample evaluation, and blind replay.
 
+## US company research · initial scope
+
+A separate US research module starts with **McDonald’s (NYSE: MCD)**: explicitly refresh public SEC annual financial facts and filing references, import USD unadjusted daily OHLCV CSV with a source URL, and save research evidence to a local project. English/Chinese UI is supported. US prices do not enter the A-share backtest engine. SEC access needs a user-configured identifying User-Agent; no paid data subscription is required for SEC data or manual imports. See the [US research guide](docs/us-equities.md) for setup, provenance and limits.
+
 ## Quick start
 
 **Windows:** Python **3.12+**, Node.js **22.12+**, and PowerShell **7+**. Python 3.12 and Node 22 are used by CI. Installation needs internet access for dependencies; the synthetic example runs offline after installation.

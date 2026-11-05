@@ -118,3 +118,15 @@ See [Obsidian contract](obsidian.md). Defaults disabled; portable export require
 - Page routes preserve project=<id> independently from run/kind. Project switching changes new research defaults; archived simulations retain their original inputs and source.
 - Optional daily execution columns is_suspended (boolean/0/1/null), limit_up and limit_down (positive finite price/null) survive normalization, Parquet, evidence export and replay. Their values participate in content hashes; unknowns remain null. OHLCV-only fingerprints preserve the v2/v3.0 representation.
 - Snapshot manifests expose data_schema (ohlcv-v1 or market-daily-v2) and execution_fields; no controls are inferred when absent upstream.
+
+## US company research
+
+These endpoints use base `/api/research/us` and are separate from strategy datasets and runs. US prices are USD; the CNY convention above applies to the existing A-share engine, not these research responses.
+
+- `GET /catalog`: supported company catalog (initially MCD).
+- `GET /company/{symbol}`: cached company research; does not implicitly fetch SEC data.
+- `POST /company/{symbol}/refresh`: explicitly refresh SEC annual facts and filing references. Requires locally configured `QUANTSANDBOX_SEC_USER_AGENT` identifying the application and real contact.
+- `POST /company/{symbol}/prices` with `{ "text": "date,open,high,low,close,volume\n...", "source_url": "https://original-provider.example/data" }`: import user-supplied unadjusted USD daily OHLCV with provenance.
+- `POST /company/{symbol}/save` with `{ "project_id": "optional-project-id", "snapshot_ids": ["displayed-sec-snapshot-id", "displayed-price-snapshot-id"] }`: save evidence from the explicitly supplied immutable snapshots (one or two IDs required), optionally linked to the specified project. Async clients must retain the initiating project ID across project switches.
+
+Annual SEC facts may be revised and do not establish historical point-in-time availability. Filing references, report periods, retrieval times, source URLs, units and snapshot identities must accompany interpretation. No US backtest endpoint is provided. See [US company research](us-equities.md) and the running OpenAPI for current response schemas and validation.

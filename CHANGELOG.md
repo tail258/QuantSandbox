@@ -2,6 +2,12 @@
 
 This file records user-visible changes. Source releases identify the exact commit and dependency locks; the calculation engine and evidence format have separate compatibility versions.
 
+## Unreleased
+
+### Added
+
+- Initial English/Chinese US company research for McDonald’s (MCD): explicit SEC annual-data refresh, cached filing references, source-attributed USD unadjusted OHLCV imports, and project-linked local evidence. US data remains outside the A-share backtest engine.
+
 ## 3.2.0 — 2026-11-05
 
 ### Added
