@@ -4,7 +4,7 @@
 
 <h1 align="center">QuantSandbox</h1>
 <p align="center"><strong>Investment research you can trace, test, and reproduce.</strong></p>
-<p align="center">A local-first workbench for company research, industry cycles, statistics, and strategy backtesting.</p>
+<p align="center">A local workbench to research markets, test strategies, and replay results from the same evidence.</p>
 
 <p align="center">
   <a href="https://github.com/tail258/QuantSandbox/actions/workflows/check.yml"><img src="https://github.com/tail258/QuantSandbox/actions/workflows/check.yml/badge.svg" alt="Checks" /></a>
@@ -16,14 +16,22 @@
 
 <p align="center">
   <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a><br />
-  <a href="#quick-start">Quick start</a> · <a href="#reproduce-an-experiment">Reproduce an experiment</a> · <a href="CONTRIBUTING.md">Contribute</a> · <a href="https://github.com/tail258/QuantSandbox/releases">Releases</a>
+  <a href="#workbench-preview">Workbench preview</a> · <a href="#quick-start">Quick start</a> · <a href="#reproduce-an-experiment">Reproduce an experiment</a> · <a href="CONTRIBUTING.md">Contribute</a> · <a href="https://github.com/tail258/QuantSandbox/releases">Releases</a>
 </p>
 
 ---
 
+## Workbench preview
+
+![Financial terminal showing a synthetic moving-average backtest with a price chart, trade evidence, and replay controls](docs/images/replay-synthetic-en.png)
+
+*Strategy replay in the Financial terminal theme. The example uses synthetic prices, even where the interface shows a real ticker. It illustrates the workflow, not investment performance.*
+
+Start with [the offline example](#reproduce-an-experiment) to generate and verify the same evidence without a live-data account.
+
 ## One workspace, from question to evidence
 
-QuantSandbox connects a research question to its data, assumptions, experiments, and saved conclusions. The browser, CLI, and API share the same Python calculations. Data and research records stay in your local workspace; public market data is fetched only when requested.
+QuantSandbox connects a research question to its data, assumptions, experiments, and saved conclusions. The browser, CLI, and API share the same Python calculations. Research records stay on your device. Live data is fetched on demand by default.
 
 <table>
   <tr>
@@ -43,6 +51,8 @@ The workbench focuses on mainland China's A-share market. It includes rubber-ind
 A separate US research module starts with **McDonald’s (NYSE: MCD)**: explicitly refresh public SEC annual financial facts and filing references, import USD unadjusted daily OHLCV CSV with a source URL, and save research evidence to a local project. English/Chinese UI is supported. US prices do not enter the A-share backtest engine. SEC access needs a user-configured identifying User-Agent; no paid data subscription is required for SEC data or manual imports. See the [US research guide](docs/us-equities.md) for setup, provenance and limits.
 
 ## Quick start
+
+**Choose a source:** Use the commands below for the current public main branch, or download the [tagged source release](https://github.com/tail258/QuantSandbox/releases/tag/v3.2.0) for a fixed version. The McDonald’s research module described above is on main and was added after that tag.
 
 **Windows:** Python **3.12+**, Node.js **22.12+**, and PowerShell **7+**. Python 3.12 and Node 22 are used by CI. Installation needs internet access for dependencies; the synthetic example runs offline after installation.
 
@@ -81,11 +91,13 @@ Run a complete synthetic example without starting a server or downloading market
 .\.venv\Scripts\python.exe -X utf8 scripts/reproduce.py
 ```
 
-The command creates isolated temporary stores, runs a backtest, exports its evidence, imports the original JSON into a second store, and verifies the replay against fixed expectations. It exits with a failure if verification fails. To retain the generated example in a new, empty directory:
+The command creates isolated temporary stores, runs a backtest, exports its evidence, imports the original JSON into a second store, and verifies the replay against fixed expectations. It exits with a failure if verification fails. To open the example shown above in the workbench, first keep the evidence file in a new, empty directory:
 
 ```powershell
 .\.venv\Scripts\python.exe -X utf8 scripts/reproduce.py --output exports/repro-demo
 ```
+
+Open **Validation → Strategies & replay**, choose **Record actions → Import evidence package**, and select the original `exports/repro-demo/evidence.json` file.
 
 This example is explicitly synthetic. Your existing datasets, research projects, and notes are not used. See the [reproducibility guide](docs/reproducibility.md) for the fixture, checks, and tagged-release instructions, and the [release guide](docs/releases.md) for archive checksums and rebuilding from source.
 
