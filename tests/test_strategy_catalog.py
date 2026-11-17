@@ -12,7 +12,7 @@ def test_catalog_defaults_are_accepted_and_match_engine(metadata):
     name = metadata["name"]
     defaults = {p["key"]: p["default"] for p in metadata["parameters"]}
     assert StrategyConfig(name=name).parameters == defaults == strategy_defaults(name)
-    frame = pd.DataFrame({"close": [100 + (i % 11) for i in range(80)]})
+    frame = pd.DataFrame({"close": [100 + (i % 11) for i in range(80)], "volume": [100] * 80})
     pd.testing.assert_frame_equal(StrategyFactory.generate_signals(frame, name),
                                   StrategyFactory.generate_signals(frame, name, defaults))
 
@@ -39,3 +39,12 @@ def test_existing_api_parameter_boundaries_are_preserved():
                              ("bollinger_bands", {"std_dev": 0})]:
         with pytest.raises(ValidationError):
             StrategyConfig(name=name, parameters=parameters)
+
+
+@pytest.mark.parametrize("parameters", [
+    {"fast_period": 20}, {"volume_window": 1}, {"volume_window": 2.5}, {"volume_window": 501},
+    {"volume_threshold": 0}, {"volume_threshold": 501}, {"volume_threshold": float("nan")},
+])
+def test_volume_strategy_rejects_invalid_parameters(parameters):
+    with pytest.raises(ValidationError):
+        StrategyConfig(name="dual_ma_volume", parameters=parameters)

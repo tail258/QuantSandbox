@@ -2,6 +2,7 @@
 .workspace-shell .workspace-rail {
   width: 224px;
   padding: 24px 14px 16px;
+  overflow-y: auto;
 }
 .workspace-shell .workspace {
   margin-left: 224px;
@@ -179,6 +180,41 @@
 }
 
 /* Project directory and active research. */
+.project-demo-invite {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 14px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: var(--theme-accent-soft, #edf4f4);
+  border: 1px solid var(--theme-border, #dbe7e8);
+  border-radius: 8px;
+}
+.project-demo-invite > svg, .project-demo-invite a, .demo-back-link {
+  color: var(--theme-accent, #07676c);
+}
+.project-demo-invite h2 { margin: 0; }
+.project-demo-invite p {
+  margin: 3px 0 0;
+  color: var(--theme-muted, #516971);
+  font-size: 12px;
+}
+.project-demo-invite a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.demo-back-link { min-height: 30px; }
+@media (max-width: 680px) {
+  .project-demo-invite { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+  .project-demo-invite a { grid-column: 2; justify-self: start; }
+}
 .project-workspace {
   display: grid;
   grid-template-columns: 245px minmax(0, 1fr);

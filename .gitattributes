@@ -1,0 +1,5 @@
+# Preserve the line endings used by existing execution fingerprints on clone.
+backend/api/schemas.py text eol=crlf
+backend/research.py text eol=crlf
+backend/core/*.py text eol=crlf
+backend/core/strategy_catalog.py text eol=lf

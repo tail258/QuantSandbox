@@ -49,13 +49,13 @@ class Store:
             connection.close()
 
     def create_run(self, config: dict, *, kind="backtest", parent_id=None, branch=None,
-                   manifest=None, experiment=None, expected_result=None) -> dict:
-        identifier, now = uuid.uuid4().hex, utc_now()
+                   manifest=None, experiment=None, expected_result=None, identifier=None) -> dict:
+        identifier, now = identifier or uuid.uuid4().hex, utc_now()
         name = config.get("name") or f"{config['strategy']['name']} · {config['start_date']}"
         with self.connect() as connection:
             connection.execute("""INSERT INTO runs
                 (id,name,status,progress,created_at,updated_at,config,kind,parent_id,branch,manifest,experiment,expected_result)
-                VALUES (?,?, 'queued',0,?,?,?,?,?,?,?,?,?)""",
+                VALUES (?,?, 'queued',0,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING""",
                 (identifier, name, now, now, canonical_json(config), kind, parent_id,
                  canonical_json(branch) if branch else None, canonical_json(manifest or []),
                  canonical_json(experiment) if experiment else None,
@@ -77,18 +77,20 @@ class Store:
         with self.connect() as connection:
             return self._decode(connection.execute("SELECT * FROM runs WHERE id=?", (identifier,)).fetchone())
 
-    def list_runs(self, limit=100) -> list[dict]:
+    def list_runs(self, limit=100, *, run_ids=None) -> list[dict]:
+        condition = 'WHERE id IN (SELECT value FROM json_each(?))' if run_ids is not None else ''
+        arguments = (canonical_json(run_ids), limit) if run_ids is not None else (limit,)
         with self.connect() as connection:
             # Extract only the small summary in SQLite. Large bars, fills and
             # checkpoints never cross the SQLite/Python boundary for this view.
             # json_type distinguishes an explicit null metrics value from a
             # missing key, matching dict.get('metrics', baseline) exactly.
-            rows = connection.execute("""SELECT id,name,status,progress,created_at,updated_at,
+            rows = connection.execute(f"""SELECT id,name,status,progress,created_at,updated_at,
                 config,kind,parent_id,branch,manifest,error,
                 CASE WHEN json_type(result, '$.metrics') IS NOT NULL
                      THEN json_quote(json_extract(result, '$.metrics'))
                      ELSE json_quote(json_extract(result, '$.baseline')) END AS metrics
-                FROM runs ORDER BY created_at DESC LIMIT ?""", (limit,)).fetchall()
+                FROM runs {condition} ORDER BY created_at DESC LIMIT ?""", arguments).fetchall()
         results = []
         for row in rows:
             decoded = self._decode(row)

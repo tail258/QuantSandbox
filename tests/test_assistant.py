@@ -33,6 +33,18 @@ def test_strategy_switch_drops_incompatible_parameters():
     assert plan["warnings"]
 
 
+def test_daily_strategy_names_are_recognized_with_their_own_parameters():
+    result = plan_research("双均线放量，快线 4，成交量窗口 30，成交量倍数阈值 1.4")
+    assert result["config"]["strategy"] == {
+        "name": "dual_ma_volume",
+        "parameters": {"fast_period": 4, "slow_period": 20, "volume_window": 30, "volume_threshold": 1.4},
+    }
+    assert not result["warnings"]
+    assert plan_research("预算内买入持有")["config"]["strategy"] == {"name": "buy_and_hold", "parameters": {}}
+    for prompt in ("双均线波动控制", "dual_ma_volatility"):
+        assert plan_research(prompt)["config"]["strategy"]["name"] == "dual_ma_volatility"
+
+
 def test_invalid_empty_or_oversize_input_is_rejected():
     for prompt in ["", " " * 4, "x" * 1001]:
         with pytest.raises(ValueError):

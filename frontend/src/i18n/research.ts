@@ -1,4 +1,11 @@
 export const researchMessages: Record<string, string> = {
+  '逐日模拟': 'Daily paper simulation', '双均线 5/20 · 最新计划': '5/20 moving averages · Latest plan',
+  '信号日': 'Signal date', '下一交易日': 'Next trading session', '保持现状': 'Hold current position',
+  '快线': 'Fast average', '慢线': 'Slow average', '模拟权益（元）': 'Paper equity (CNY)',
+  '新日线已导入，可核对并推进一个交易日。': 'A new daily bar was imported. Review and advance one session.',
+  '等待下一交易日收盘及核验快照，手动推进。': 'Waiting for a verified snapshot after the next close. Advance manually.',
+  '推进逐日模拟': 'Advance paper simulation', '逐日模拟未能推进。': 'The paper simulation could not advance.',
+  '模拟成交': 'Simulated fills', '未成交或顺延': 'Rejected or deferred',
   概览: 'Overview',
   研究证据: 'Research evidence',
   策略实验: 'Strategy experiments',

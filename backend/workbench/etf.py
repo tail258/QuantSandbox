@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 import uuid
 import zipfile
 from concurrent.futures import ThreadPoolExecutor,as_completed
@@ -120,20 +121,55 @@ def build(snapshot_ids,params):
     sources=[{k:v for k,v in s.items() if k not in ['rows','raw']}|{'count':len(s['rows'])} for s in snaps]
     return store.save_run({'kind':'etf','title':'宽基ETF资金观察 · '+result['asof'],'params':params,'inputs':list(dict.fromkeys(snapshot_ids)),'sources':sources,'result':result})
 
+def incremental_source(request,key,recent_days):
+    state=store.latest('etf_dashboard')
+    historical=[]
+    if state:
+        original=store.get_run(state['run_id'])
+        kind={'index':'etf_index','szse':'etf_shares','nav':'etf_nav'}[request['kind']]
+        symbol={'index':'sh000300','szse':'SZSE','nav':request.get('code')}[request['kind']]
+        historical=[store.get_snapshot(i) for i in original['inputs']]
+        historical=[x for x in historical if x['kind']==kind and x['symbol']==symbol]
+    if not historical:return source(request,key,force=True)
+    historical_dates=sorted({r['date'] for snap in historical for r in snap['rows']})
+    recent_start=(pd.Timestamp(request['end'])-timedelta(days=recent_days)).date().isoformat()
+    covered_start=min((snap.get('request',{}).get('start') or historical_dates[0]) for snap in historical) if historical_dates else None
+    if not historical_dates or covered_start>request['start']:
+        recent_start=request['start']
+    else:
+        recent_start=min(recent_start,(pd.Timestamp(historical_dates[-1])+timedelta(days=1)).date().isoformat())
+    recent={**request,'start':max(request['start'],recent_start)}
+    fresh=source(recent,key+':recent:'+recent['start'],force=True)
+    rows={}
+    for snap in historical+[fresh]:
+        for row in snap['rows']:
+            if request['start']<=row['date']<=request['end']:rows[(row['date'],row.get('code'))]=row
+    payload={k:v for k,v in fresh.items() if k not in ['id','fetched_at','version']}
+    payload.update(rows=list(rows.values()),request=request,parent_snapshot_ids=[x['id'] for x in historical]+[fresh['id']],refresh_request=recent,actual_source_dates=sorted({r['date'] for r in fresh['rows']}),source_segments=[{'snapshot_id':x['id'],'fetched_at':x['fetched_at'],'dates':sorted({r['date'] for r in x['rows']})} for x in historical+[fresh]])
+    if not fresh['rows']:payload['warning']='近期来源尚未发布或返回为空；历史缓存保留'
+    return store.snapshot(key,payload)
+
 def refresh(p,progress=lambda **kw:None):
-    start=p.get('start',(datetime.now().date()-timedelta(days=75)).isoformat());end=p.get('end',datetime.now().date().isoformat());codes=codes_of(p.get('codes'))
+    today=datetime.now(timezone(timedelta(hours=8))).date()
+    start=p.get('start',(today-timedelta(days=75)).isoformat());end=p.get('end',today.isoformat());codes=codes_of(p.get('codes'))
     a=pd.Timestamp(start);b=pd.Timestamp(end)
     if a>b or (b-a).days>120:raise ValueError('单次刷新最多120个自然日，开始不得晚于结束')
     force=bool(p.get('force'));ids=[];errors=[]
     progress(stage='获取沪深300交易日历',done=0,total=1)
-    idx=source({'kind':'index','start':start,'end':end},f'etf_cache:index:{start}:{end}',force);ids.append(idx['id'])
+    index_request={'kind':'index','start':start,'end':end};index_key=f'etf_cache:index:{start}:{end}'
+    idx=incremental_source(index_request,index_key,int(p['recent_days'])) if p.get('recent_days') else source(index_request,index_key,force)
+    ids.append(idx['id'])
+    if idx.get('warning'):errors.append({'request':index_request,'error':idx['warning']})
     dates=[r['date'] for r in idx['rows']]
     tasks=[({'kind':'sse','start':d,'end':d},'etf_cache:shares:SSE:'+d) for d in dates if any(c.startswith('5') for c in codes)]
     if any(c.startswith('15') for c in codes):tasks.append(({'kind':'szse','start':start,'end':end},f'etf_cache:shares:SZSE:{start}:{end}'))
     tasks.extend(({'kind':'nav','code':c,'start':start,'end':end},f'etf_cache:nav:{c}:{start}:{end}') for c in codes)
     total=len(tasks);done=0
     def run(task):
-        s=source(*task,force=force)
+        request,key=task
+        recent=bool(p.get('recent_days'))
+        recent_force=recent and (request['kind']!='sse' or request['start'] >= (b-timedelta(days=int(p['recent_days']))).date().isoformat())
+        s=incremental_source(request,key,int(p['recent_days'])) if recent and request['kind']!='sse' else source(*task,force=force or recent_force,ttl=315360000 if recent and not recent_force else 86400)
         if not s['rows']:return s,'上游尚未发布或无记录'
         return s,s.get('warning')
     with ThreadPoolExecutor(4) as pool:
@@ -150,21 +186,35 @@ def refresh(p,progress=lambda **kw:None):
     store.snapshot('etf_dashboard',{'kind':'etf_dashboard','symbol':'宽基ETF','source':'沪深交易所份额 / 东方财富净值 / BaoStock指数','source_url':'https://www.sse.com.cn/assortment/fund/etf/list/scale/','unit':'份 / 元（估算）','method':METHOD,'run_id':run['id'],'rows':[{'date':r['date'],'delta':r['delta'],'coverage':r['coverage']} for r in run['result']['daily']],'errors':errors})
     return {'run_id':run['id'],'asof':run['result']['asof'],'errors':errors,'inputs':len(ids)}
 
-_jobs={};_lock=threading.Lock()
+_jobs={};_lock=threading.RLock()
 def job_path(jid):
     if not re.fullmatch(r'[a-f0-9]{32}',jid):raise ValueError('无效任务ID')
     return store.data_path()/'etf-jobs'/(jid+'.json')
 
+def _retry_job_io(action):
+    for attempt in range(5):
+        try:
+            return action()
+        except (PermissionError, json.JSONDecodeError):
+            if attempt == 4: raise
+            time.sleep(.02 * (attempt + 1))
+
 def write_job(job):
-    path=job_path(job['id']);path.parent.mkdir(parents=True,exist_ok=True)
-    temp=path.with_suffix('.tmp');temp.write_text(store.encode(job),encoding='utf-8');temp.replace(path)
+    with _lock:
+        path=job_path(job['id']);path.parent.mkdir(parents=True,exist_ok=True)
+        temp=path.with_name(path.name+'.'+uuid.uuid4().hex+'.tmp')
+        try:
+            _retry_job_io(lambda: temp.write_text(store.encode(job),encoding='utf-8'))
+            _retry_job_io(lambda: temp.replace(path))
+        finally:temp.unlink(missing_ok=True)
 
 def start_job(p):
     codes_of(p.get('codes'))
     with _lock:
-        running=next((j for j in _jobs.values() if j['status']=='running' and j['params'].get('job_kind')==p.get('job_kind')),None)
+        running=next((j for j in _jobs.values() if j['status']=='running' and j.get('data_scope')==str(store.data_path().resolve()) and j['params'].get('job_kind')==p.get('job_kind')),None)
         if running:return running
-        jid=uuid.uuid4().hex;job={'id':jid,'status':'running','stage':'准备','done':0,'total':1,'created_at':store.now(),'params':p};_jobs[jid]=job;write_job(job)
+        jid=uuid.uuid4().hex;job={'id':jid,'status':'running','stage':'准备','done':0,'total':1,'created_at':store.now(),'params':p,'data_scope':str(store.data_path().resolve())}
+        write_job(job);_jobs[jid]=job
     def work():
         def progress(**kw):
             with _lock:job.update(kw);write_job(job)
@@ -174,6 +224,13 @@ def start_job(p):
                 result=national_refresh(p,progress)
             else:result=refresh(p,progress)
             with _lock:job.update(status='completed',stage='完成',result=result,completed_at=store.now());write_job(job)
+            if p.get('job_kind') != 'national':
+                try:
+                    from . import etf_intraday
+                    etf_intraday.start_job({'codes':p.get('codes'), 'history':True})
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).exception('ETF intraday baseline refresh could not start')
         except Exception as e:
             with _lock:job.update(status='failed',stage='失败',error=str(e));write_job(job)
     context=copy_context()
@@ -181,11 +238,13 @@ def start_job(p):
     return dict(job)
 
 def get_job(jid):
-    path=job_path(jid)
-    if not path.exists():raise ValueError('找不到任务')
-    job=json.loads(path.read_text(encoding='utf-8'))
-    if job['status']=='running' and jid not in _jobs:job.update(status='interrupted',error='服务重启，原刷新任务已中断，可重新运行并复用已完成缓存')
-    return job
+    with _lock:
+        path=job_path(jid)
+        if not path.exists():raise ValueError('找不到任务')
+        try:job=_retry_job_io(lambda: json.loads(path.read_text(encoding='utf-8')))
+        except json.JSONDecodeError as exc:raise ValueError('任务记录损坏，请重新刷新') from exc
+        if job['status']=='running' and jid not in _jobs:job.update(status='interrupted',error='服务重启，原刷新任务已中断，可重新运行并复用已完成缓存')
+        return job
 
 def dashboard(run_id=None,codes=None,threshold=.03,asof=None):
     state=store.latest('etf_dashboard')

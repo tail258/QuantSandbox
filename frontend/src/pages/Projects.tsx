@@ -8,13 +8,16 @@ import {
   Save,
   FileText,
   FlaskConical,
+  CirclePlay,
 } from 'lucide-react'
 import type { PageProps } from '../App'
 import { api, type Row } from '../api'
 import { request, post } from '../http'
 import { Panel, Note, Empty, LoadingButton } from '../components'
-import { useProject, type Project, type ProjectLink } from '../workspace/ProjectContext'
+import { strategyDemoPage, useProject, type Project, type ProjectLink } from '../workspace/ProjectContext'
 import Dialog from '../workspace/Dialog'
+import DailyPaper from '../workspace/DailyPaper'
+import { chanPage } from '../chan/model'
 const tabs = [
   ['overview', '概览'],
   ['evidence', '研究证据'],
@@ -194,6 +197,16 @@ export default function Projects({ setPage, status }: PageProps) {
       </div>
       {error && <Note tone="warn">{t(error)}</Note>}
       {message && <Note>{t(message)}</Note>}
+      <section className="project-demo-invite" aria-labelledby="project-demo-heading">
+        <CirclePlay size={20} aria-hidden="true" />
+        <div>
+          <h2 id="project-demo-heading">{t('用合成数据走一遍研究流程')}</h2>
+          <p>{t('从一个日线问题出发，查看基准结果、调整参数，再重放证据。演示与本机项目分开。')}</p>
+        </div>
+        <a href={'#' + strategyDemoPage}>
+          {t('打开离线策略演示')} <ArrowRight size={14} aria-hidden="true" />
+        </a>
+      </section>
       <div className="project-workspace">
         <section className="project-directory" aria-label={t('项目目录')}>
           <div className="project-directory-head">
@@ -248,7 +261,9 @@ export default function Projects({ setPage, status }: PageProps) {
                   <h2>{activeProject.name}</h2>
                   <p>{activeProject.question || t('尚未填写研究问题。')}</p>
                   <div className="project-summary">
-                    <span>{activeProject.symbols.join(' · ') || t('未关联证券')}</span>
+                    {activeProject.symbols.length ? activeProject.symbols.map(symbol => /^[0-9]{6}$/.test(symbol)
+                      ? <a key={symbol} title={t('打开标的分析')} href={`#stock?${new URLSearchParams({ symbol, project: activeProject.id })}`}>{symbol}</a>
+                      : <span key={symbol}>{symbol}</span>) : <span>{t('未关联证券')}</span>}
                     <span>{t('{count} 条研究证据', { count: researchLinks.length })}</span>
                     <span>{t('{count} 项策略实验', { count: experimentLinks.length })}</span>
                   </div>
@@ -272,6 +287,9 @@ export default function Projects({ setPage, status }: PageProps) {
               </div>
               {tab === 'overview' && (
                 <>
+                  {chosenDatasets.some((dataset: Row) => dataset.execution_history) && (
+                    <DailyPaper key={activeProject.id} projectId={activeProject.id} datasets={chosenDatasets} />
+                  )}
                   <Panel title={t('研究路径')}>
                     <div className="project-next-actions">
                       <button className="secondary" onClick={() => setPage(activeProject.symbols.some(s => s.startsWith('US:')) ? 'us' : 'finance')}>
@@ -287,6 +305,11 @@ export default function Projects({ setPage, status }: PageProps) {
                       <button className="secondary" onClick={() => setPage('simulation')}>
                         <strong>{t('策略验证')}</strong>
                         <small>{t('固定行情，创建对照')}</small>
+                        <ArrowRight size={15} />
+                      </button>
+                      <button className="secondary" onClick={() => setPage(chanPage)}>
+                        <strong>{t('日线缠论')}</strong>
+                        <small>{t('识别结构并逐根重放')}</small>
                         <ArrowRight size={15} />
                       </button>
                     </div>

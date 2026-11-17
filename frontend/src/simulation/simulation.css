@@ -40,6 +40,7 @@
 .simulation-evidence-grid div { min-width: 0; }
 .simulation-evidence-grid dt { font-size: 10px; color: #80918b; margin-bottom: 4px; }
 .simulation-evidence-grid dd { margin: 0; font-size: 12px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.simulation-dividend-summary { margin: 0 0 12px; }
 .simulation-reason { line-height: 1.7; margin: 17px 0; padding-top: 13px; border-top: 1px solid #e2eae7; }
 .simulation-inspector details { margin-top: 14px; }
 .simulation-inspector summary { font-size: 11px; color: #587368; }
@@ -123,7 +124,7 @@
  .simulation-inspector .simulation-evidence-grid { grid-template-columns: repeat(2, 1fr); }
  .simulation-reason { margin-top: 16px; }
  .simulation-inspector > details { margin-top: 14px; }
- .simulation-lower-panel > .tabs { display: flex; gap: 0; }
+ .simulation-lower-panel > .tabs { display: flex; flex-wrap: wrap; gap: 0; }
  .simulation-lower-panel > .tabs button { font-size: 11px; padding: 9px 8px; }
  .simulation-trade-cards { display: grid; gap: 9px; }
  .simulation-trade-cards.is-hidden, .simulation-ledger-table { display: none; }

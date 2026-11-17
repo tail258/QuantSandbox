@@ -5,7 +5,9 @@ from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from backend.core.strategy_catalog import canonical_name, normalize_parameters, strategy_defaults
+from backend.core.strategy_catalog import (MA_STRATEGIES, VOLATILITY_MULTIPLIER_MIN, VOLATILITY_THRESHOLD_MIN,
+                                           VOLUME_THRESHOLD_MAX, VOLUME_THRESHOLD_MIN, canonical_name,
+                                           normalize_parameters, strategy_defaults)
 
 
 class StrictModel(BaseModel):
@@ -13,7 +15,7 @@ class StrictModel(BaseModel):
 
 
 class StrategyConfig(StrictModel):
-    name: Literal["dual_ma", "rsi_reversal", "momentum", "bollinger_bands"] = "dual_ma"
+    name: Literal["dual_ma", "dual_ma_volume", "dual_ma_volatility", "buy_and_hold", "rsi_reversal", "momentum", "bollinger_bands"] = "dual_ma"
     parameters: dict[str, float | int] = Field(default_factory=lambda: strategy_defaults("dual_ma"))
 
     @model_validator(mode="before")
@@ -38,9 +40,15 @@ class StrategyConfig(StrictModel):
         for key, value in self.parameters.items():
             if abs(value) > 500:
                 raise ValueError("策略参数超出允许范围")
-            if key in {"fast_period", "slow_period", "window"} and (value < 2 or int(value) != value):
+            if key in {"fast_period", "slow_period", "window", "volume_window", "volatility_window"} and (value < 2 or int(value) != value):
                 raise ValueError("指标周期必须为 2 到 500 的整数")
-        if self.name == "dual_ma" and self.parameters.get("fast_period", 5) >= self.parameters.get("slow_period", 20):
+            if key == "volume_threshold" and not VOLUME_THRESHOLD_MIN <= value <= VOLUME_THRESHOLD_MAX:
+                raise ValueError(f"成交量倍数阈值必须在 [{VOLUME_THRESHOLD_MIN}, {VOLUME_THRESHOLD_MAX}] 内")
+            if key == "volatility_threshold" and not VOLATILITY_THRESHOLD_MIN <= value <= 1:
+                raise ValueError(f"日波动率阈值必须在 [{VOLATILITY_THRESHOLD_MIN}, 1] 内")
+            if key == "high_volatility_multiplier" and not VOLATILITY_MULTIPLIER_MIN <= value <= 1:
+                raise ValueError(f"高波动入场预算倍率必须在 [{VOLATILITY_MULTIPLIER_MIN}, 1] 内")
+        if self.name in MA_STRATEGIES and self.parameters["fast_period"] >= self.parameters["slow_period"]:
             raise ValueError("快均线周期必须小于慢均线周期")
         if self.name == "rsi_reversal" and not (0 < self.parameters.get("buy_threshold", 30) < self.parameters.get("sell_threshold", 70) < 100):
             raise ValueError("RSI 阈值必须满足 0 < oversold < overbought < 100")

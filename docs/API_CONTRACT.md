@@ -85,13 +85,57 @@ The service binds localhost. Default data path `data/`; override with `QUANT_SAN
 
 All research endpoints share the same local server and use `/api/research`: `/status`, `/fetch`, `/series/{id}`, `/snapshot/{id}`, `/finance`, `/profile/{symbol}`, `/import`, `/analyze`, `/save-finance`, `/runs`, `/runs/{id}`, `/export/{id}`, `/research`, `/etf/*`, `/national/*`. Their run IDs and payloads remain independent of strategy runs. Research CLI: `python -m backend.workbench.cli`.
 
+ETF refresh controls use the same research data store:
+
+- `GET /api/research/etf/refresh-settings`: local schedule, `enabled`, `time` (`HH:MM`), `timezone` (`Asia/Shanghai`), `next_run`, `last_job_id`, `last_attempt`, and job `status`.
+- `PATCH /api/research/etf/refresh-settings`: accepts only `enabled` (boolean) and `time` (`HH:MM`). Defaults to enabled at 15:30 Shanghai time. Settings stay in the local research directory.
+- `POST /api/research/etf/refresh-now`: starts or returns the active refresh job; poll `GET /api/research/etf/jobs/{id}`. It refreshes recent data while retaining prior evidence. A completed job can contain upstream warnings; inspect actual source coverage and dates.
+- `POST /api/research/etf/refresh`: retains explicit historical range and force controls.
+
+Scheduling runs only while this workspace service is running, once per local calendar day. An overdue current-day attempt runs after service resumes; missed past days are not replayed as scheduled jobs. Manual retry remains available after failure. `create_app(..., run_jobs=False)` disables automatic scheduling for isolated API tests. This schedule does not access external notebooks.
+
+ETF intraday uses separate quote/history jobs and cached reads: `GET /api/research/etf/intraday?codes=510300,159919`, `POST /api/research/etf/intraday/refresh` with `{codes,history,force}`, and `GET /api/research/etf/intraday/jobs/{id}`. `history:false` refreshes lightweight quotes; `history:true` refreshes minute bars. The dashboard returns individual quote and comparison times, sample counts, snapshot IDs, provenance, stale flags and errors. See the [intraday contract and methodology](etf-intraday.md) for units, bar boundaries, provisional samples, concurrency and CLI behavior.
+
 `GET /api/health` includes `app: QuantSandbox`, `version: 3.1.0`, and the local workspace path for launcher identity. API localhost host/origin rules apply to all modules.
+
+### Sourced execution history and daily paper account
+
+`POST /api/research/execution-history` imports an unadjusted daily OHLCV snapshot with volume in shares. Use the same JSON with `python -m backend.workbench.cli import-execution-history FILE`. Include the price source and acquisition time, the exchange session list, optional explicit suspension/limit fields with their sources, and issuer cash dividend events with their announcement, record, ex-dividend and payment dates. For rule-derived price limits, provide the exchange rule URLs. A `base_snapshot_id` adds evidence to exactly the same historical OHLCV and keeps the old snapshot available. Import returns the new snapshot ID and gap counts. Strategy runs reference that ID through the fixed bridge. Dividend evidence follows the rows and origin in the exported bundle.
+
+Set both `calendar.start_date` and `calendar.end_date` when the source verifies the complete inclusive calendar span, including any non-trading days at its edges. Both dates must lie within the declared history range and contain all listed sessions. With a session list alone, coverage starts at the first listed session and ends at the last. Gap counts are null when the calendar covers only part of the requested interval.
+
+`GET /api/projects/{project_id}/daily-paper` lists the local paper record. `POST` on that path with `{"snapshot_id":"…","as_of":"YYYY-MM-DD"}` seeds a single-security 5/20-day strategy in cash. `POST /api/projects/{project_id}/daily-paper/{account_id}/advance` takes the same payload and reconciles one verified next session after close. The new snapshot must preserve the prior rows and carry the eligible session's own prices, controls, dividend review and next exchange session. Each plan must be saved before that next session opens. Repeating an already accepted observation with the same snapshot does not add a second receipt. The project overview displays and advances the paper account. Collection and advancement are manual. The daily receipt uses the observed opening price with simulated matching after the full daily bar is acquired.
+
+### Offline strategy demo
+
+- `POST /api/demo/strategy/run` accepts `{"fast_period":5,"slow_period":20}` (both defaults). The windows are integer days with `2 ≤ fast < slow ≤ 60`. All runs use the same fixed synthetic daily snapshot and fixed account assumptions. Results include `synthetic`, `snapshot`, `period`, `parameters`, `account`, `metrics`, `series`, `trades`, `result_sha256` and an `evidence` string.
+- `POST /api/demo/strategy/replay` accepts `{"evidence":"<original string returned by run>"}`. Preserve the string rather than parsing and serializing its inner JSON in the browser. The server accepts only the fixed demonstration input/configuration, recalculates in a separate temporary store, and returns `matched`, `compared_fields`, `different_fields`, `snapshot_sha256` and `result_sha256`.
+
+Neither endpoint uses market providers or persists data in the research workspace. Demo evidence covers a synthetic example only; replay compares metrics, account series, trades and decisions on that input.
+
+## Instrument decision research
+
+Supports verified Shanghai/Shenzhen listed stocks and ETFs. Optional `project_id` enforces project membership. Session dates use Asia/Shanghai.
+
+- `GET /api/decision/{symbol}` reads cached data. A `snapshot_id` pins an immutable historical-only view. Optional `as_of` truncates the snapshot and requires its ID.
+- `POST /api/decision/{symbol}/refresh` updates only this instrument; on refresh failure any prior snapshot remains visible, with current conditions withdrawn. The result includes input provenance and omissions, daily and weekly structures, the plan, descriptive factors and a short tail of causal structure observations.
+- `GET /api/decision/{symbol}/factors` reads locally saved choices for the symbol or project/symbol pair. `PUT` with `{"selected":["sma20","relative_volume20"]}` replaces the choices. Supported keys: `sma20`, `sma60`, `rsi14`, `bollinger20`, `relative_volume20`. An empty selection is valid.
+- `GET /api/decision/{symbol}/evaluation?snapshot_id=...` computes a retrospective event study on up to 252 sessions; optional `as_of` pins the end date and `holding_sessions` defaults to 5. The result includes verified date coverage, scored and excluded events, an eligible-but-not-triggered comparator, and cost assumptions. Returns are fractional opening-price references, not fills. This endpoint neither writes runs nor refreshes prices.
+
+### Daily Chan structure and replay
+
+- `GET /api/projects/{id}/chan/snapshots` lists fixed unadjusted daily quote snapshots for the project's securities.
+- `POST /api/projects/{id}/chan/analyze` takes `{"snapshot_id":"…"}`. It returns `input` (snapshot, source, hashes, dates, coverage and price basis), `bars`, `result` and a raw JSON `evidence` string. Known suspended rows are excluded. Missing verified sessions and unknown suspension counts remain visible. No missing bars are synthesized.
+- `POST /api/chan/demo` returns the same shape with fixed synthetic bars and no project. `POST /api/chan/replay` accepts the original evidence bytes as its JSON body, up to 2,000,000 bytes. It recomputes the structure timeline on the bundled bars, checks hashes, and adds `verified: true`.
+
+The input limit is 4,000 observations. `result.frames` identifies which events belong to each observation using end-exclusive slices of `result.events`. Apply those events in order (upsert on create, revise or confirm, remove on removal) to reconstruct each observation. `result.structures` contains the final state. Structural dates and confirmation dates serve different purposes, and neither records when a data provider actually published a historical bar. See the [daily replay guide](chan-replay.zh-CN.md).
 
 ### Projects
 
 - `GET /api/projects` -> `{projects:[{id,name,question,symbols,created_at,updated_at,links}]}`.
 - `POST /api/projects` body `{name,question?,symbols?:[six-digit-code]}` -> HTTP201 project.
 - `GET /api/projects/{id}` -> project.
+- `GET /api/projects/{id}/strategy-runs?limit=25` -> `{runs:[RunSummary]}` for that project's linked simulations only.
 - `POST /api/projects/{id}/links` body `{kind:'research'|'simulation',run_id}` -> project. Target records are validated; existing links are idempotent.
 
 ### Frozen research-price bridge
@@ -104,6 +148,8 @@ All research endpoints share the same local server and use `/api/research`: `/st
 
 Provide one immutable quote snapshot per ticker. Each must explicitly declare unadjusted prices and shares-volume units, with source request coverage containing the research interval. All validation precedes scheduling. The bridge retains available pre-start bars for indicator warmup and truncates future bars after the end date. It does not fetch missing data; select a sufficiently long source snapshot first.
 
+For a Codex-driven run, send the same body to `POST /api/bridge/backtests/preview` first. It requires a project, verifies ticker membership and original input integrity, and returns normalized `config`, per-input observations and warmup, warnings, and a `plan_id`. The response gives each calendar's coverage dates and returns a null missing-session count when that coverage cannot verify the whole requested interval. Warmup counts target the final close before the run. An input may need an extra price for returns or an extra eligible volume bar for comparison with prior volume. The preview is read-only. Submit the normalized inputs with `plan_id` to `POST /api/bridge/backtests`. Changed parameters, fixed inputs or engine versions give HTTP 409. Retrying a current plan returns the existing linked run. The browser can submit without a plan.
+
 Strategy manifests add `source:snapshot` and `origin` containing research snapshot ID/hash, original provider URL, fetch time, request, units and transformation. `GET /api/data/status` exposes snapshot availability. Direct `/api/runs` source=snapshot is rejected: fixed data must enter through the bridge or validated evidence import. Snapshot evidence remains in the existing evidence-v2 envelope and preserves origin metadata on replay.
 
 ### Optional Obsidian module
@@ -114,7 +160,7 @@ See [Obsidian contract](obsidian.md). Defaults disabled; portable export require
 ## Project workspace and execution controls (v3.1)
 
 - Projects include conclusion (empty by default). Existing project tables gain this field without replacing IDs, questions or links.
-- PATCH /api/projects/{id}: partial {name?,question?,symbols?,conclusion?}; unknown fields, null values and invalid symbols are rejected. Empty text explicitly clears a conclusion.
+- PATCH /api/projects/{id}: partial {name?,question?,symbols?,conclusion?,expected_updated_at?}; unknown changes, null field changes and invalid symbols are rejected. Empty text explicitly clears a conclusion. Supply the last read `updated_at` as `expected_updated_at` to reject concurrent changes with HTTP 409.
 - Page routes preserve project=<id> independently from run/kind. Project switching changes new research defaults; archived simulations retain their original inputs and source.
 - Optional daily execution columns is_suspended (boolean/0/1/null), limit_up and limit_down (positive finite price/null) survive normalization, Parquet, evidence export and replay. Their values participate in content hashes; unknowns remain null. OHLCV-only fingerprints preserve the v2/v3.0 representation.
 - Snapshot manifests expose data_schema (ohlcv-v1 or market-daily-v2) and execution_fields; no controls are inferred when absent upstream.

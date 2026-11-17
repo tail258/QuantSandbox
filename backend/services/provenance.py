@@ -2,6 +2,8 @@
 import hashlib
 from pathlib import Path
 
+from backend.core.engine import ENGINE_VERSION
+
 
 def engine_fingerprint() -> dict:
     directory = Path(__file__).resolve().parents[1]
@@ -17,4 +19,4 @@ def engine_fingerprint() -> dict:
         if path.exists():
             digest.update(str(path.relative_to(directory)).replace("\\", "/").encode())
             digest.update(path.read_bytes())
-    return {"version": "2.0.0", "source_sha256": digest.hexdigest()}
+    return {"version": ENGINE_VERSION, "source_sha256": digest.hexdigest()}

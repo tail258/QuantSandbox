@@ -18,5 +18,6 @@ try {
     }
     & npm.cmd ci --prefix frontend
     if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
+    & (Join-Path $PSScriptRoot 'enable-codex.ps1')
     Write-Host 'Ready. Run: pwsh -File scripts/dev.ps1' -ForegroundColor Cyan
 } finally { Pop-Location }

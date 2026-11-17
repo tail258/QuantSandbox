@@ -14,6 +14,8 @@ Add verified exchange calendars, historical security rules, corporate-action acc
 
 Add an independent final holdout set, additional selection objectives and experiments launched from historical branches. Record training, validation and test intervals and the candidate-selection process. Parameter sensitivity alone does not establish out-of-sample performance.
 
+The [strategy research development plan (Chinese)](strategy-development-plan.zh-CN.md) starts with daily, after-close research and sets data-quality gates for any later minute-bar trial.
+
 ## Interface and accessibility
 
 Reduce repeated project/object headers, improve text size and contrast, and bring the main finding and chart earlier into the viewport. Extend narrow-screen summaries for financial tables and the data catalog. Keep English/Chinese parity, both themes, keyboard focus and original user/source content intact.

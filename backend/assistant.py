@@ -5,6 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 import re
 
+from backend.core.strategy_catalog import strategy_defaults
+
 
 DEFAULT_CONFIG = {
     "name": "研究指令实验",
@@ -55,6 +57,12 @@ def plan_research(prompt: str, base_config: dict | None = None) -> dict:
         change("strategy", {"name": "bollinger_bands", "parameters": {"window": 20, "std_dev": 2}})
     elif re.search(r"rsi|相对强弱", text):
         change("strategy", {"name": "rsi_reversal", "parameters": {"window": 14, "buy_threshold": 30, "sell_threshold": 70}})
+    elif re.search(r"双均线放量|dual_ma_volume", text):
+        change("strategy", {"name": "dual_ma_volume", "parameters": strategy_defaults("dual_ma_volume")})
+    elif re.search(r"双均线波动控制|dual_ma_volatility", text):
+        change("strategy", {"name": "dual_ma_volatility", "parameters": strategy_defaults("dual_ma_volatility")})
+    elif re.search(r"预算内买入持有|buy_and_hold", text):
+        change("strategy", {"name": "buy_and_hold", "parameters": {}})
     elif re.search(r"双均线|均线交叉|dual_ma", text):
         change("strategy", {"name": "dual_ma", "parameters": {"fast_period": 5, "slow_period": 20}})
 
@@ -67,12 +75,24 @@ def plan_research(prompt: str, base_config: dict | None = None) -> dict:
     ]
     allowed = {
         "dual_ma": {"fast_period", "slow_period"},
+        "dual_ma_volume": {"fast_period", "slow_period"},
+        "dual_ma_volatility": {"fast_period", "slow_period"},
         "bollinger_bands": {"window", "std_dev"},
         "rsi_reversal": {"window", "buy_threshold", "sell_threshold"},
     }
     strategy_name = config["strategy"]["name"]
+    parameter_text = text
+    if strategy_name == "dual_ma_volume":
+        volume_patterns = [
+            (r"(?:成交量窗口|volume_window)\s*[:：=]?\s*(\d+)", "volume_window", int),
+            (r"(?:成交量倍数阈值|volume_threshold)\s*[:：=]?\s*(\d+(?:\.\d+)?)", "volume_threshold", float),
+        ]
+        for pattern, field, convert in volume_patterns:
+            if match := re.search(pattern, parameter_text):
+                change(f"strategy.parameters.{field}", convert(match.group(1)))
+                parameter_text = re.sub(pattern, " ", parameter_text)
     for pattern, field in field_patterns:
-        match = re.search(pattern, text)
+        match = re.search(pattern, parameter_text)
         if match:
             if field in allowed.get(strategy_name, set()):
                 change(f"strategy.parameters.{field}", int(match.group(1)))

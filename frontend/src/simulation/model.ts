@@ -1,5 +1,5 @@
 import {t} from '../i18n';
-import type {Row} from '../api';
+import {fmt,type Row} from '../api';
 
 export const kindName:Row={backtest:'基线回测',branch:'历史分叉',pressure:'压力实验',parameter:'参数敏感性',walk_forward:'滚动样本外'};
 export const statusName:Row={queued:'排队中',running:'计算中',completed:'已完成',failed:'失败',cancelled:'已取消'};
@@ -69,11 +69,18 @@ export function describeChanges(changes:Row){
  return known.length?known.join(t('；')):t('沿用基线设置');
 }
 
-const parameterNames:Row={fast_period:'快线周期',slow_period:'慢线周期',window:'观察周期',std_dev:'标准差倍数',buy_threshold:'买入 RSI 阈值',sell_threshold:'卖出 RSI 阈值',threshold:'动量阈值'};
+const parameterNames:Record<string,string>={
+ fast_period:'快线周期',slow_period:'慢线周期',window:'观察周期',std_dev:'标准差倍数',
+ buy_threshold:'买入 RSI 阈值',sell_threshold:'卖出 RSI 阈值',threshold:'动量阈值',
+ volume_window:'成交量窗口',volume_threshold:'成交量倍数阈值',volatility_window:'波动率窗口',
+ volatility_threshold:'日波动率阈值',high_volatility_multiplier:'高波动入场预算倍率',
+};
 export const parameterName=(key:string)=>t(parameterNames[key]||'策略参数');
 export function parameterValue(key:string,value:number){
- if(['fast_period','slow_period','window'].includes(key))return t("{v0} 个交易日", {v0:value});
+ if(['fast_period','slow_period','window','volume_window','volatility_window'].includes(key))return t("{v0} 个交易日", {v0:value});
  if(key==='threshold')return `${fixedMetric(value*100)}%`;
+ if(key==='volatility_threshold')return `${fmt(value*100,4)}%`;
+ if(['volume_threshold','high_volatility_multiplier'].includes(key))return `${fixedMetric(value)}×`;
  return fixedMetric(value);
 }
 export const describeParameters=(parameters:Row)=>Object.entries(parameters||{}).map(([key,value])=>`${parameterName(key)} ${parameterValue(key,value)}`).join('；');

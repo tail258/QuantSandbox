@@ -13,7 +13,10 @@ const context = vi.hoisted(() => ({
   reloadProjects: vi.fn(),
   linkRecord: vi.fn(),
 }))
-vi.mock('../workspace/ProjectContext', () => ({ useProject: () => context }))
+vi.mock('../workspace/ProjectContext', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../workspace/ProjectContext')>(),
+  useProject: () => context,
+}))
 vi.mock('../api', async () => {
   const actual = await vi.importActual<typeof import('../api')>('../api')
   return { ...actual, api: vi.fn() }
@@ -59,6 +62,7 @@ describe('project master-detail workspace', () => {
     render(<Projects {...props} />)
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByRole('heading', { name: '公司周期研究' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: '打开离线策略演示' }).getAttribute('href')).toBe('#strategy-demo')
     await user.click(screen.getByRole('button', { name: '新建项目' }))
     expect(screen.getByRole('dialog', { name: '新建研究项目' })).toBeTruthy()
     await user.type(screen.getByLabelText('项目名称'), '新研究')

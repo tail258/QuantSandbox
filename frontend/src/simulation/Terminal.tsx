@@ -8,9 +8,61 @@ import SimulationChart from '../SimulationChart';
 import type {usePlayback} from './usePlayback';
 
 type Playback=ReturnType<typeof usePlayback>;
+
+function DividendLedger({events,series,cutoff}:{events:Row[];series:Row[];cutoff:string}){
+ const paid=series.reduce((total,row)=>total+(row.dividend_cash_paid||0),0);
+ const receivable=series.at(-1)?.dividend_receivables;
+ const visible=events.filter(event=>event.record_date<=cutoff);
+ return <>
+  <dl className="simulation-evidence-grid simulation-dividend-summary">
+   <div><dt>{t("累计入账税前红利")}</dt><dd>{fmt(paid,2)} {t("元 CNY")}</dd></div>
+   <div><dt>{t("期末应收税前红利")}</dt><dd>{fmt(receivable,2)} {t("元 CNY")}</dd></div>
+  </dl>
+  {visible.length?<RawTable rows={visible.map(event=>({
+   [t("证券")]:event.ticker,[t("股权登记日")]:event.record_date,[t("除息日")]:event.ex_date,[t("公告派息日")]:event.payment_date,
+   [t("登记持股")]:fmt(event.shares,0),[t("每股税前红利（元）")]:fmt(event.cash_per_share,6),[t("税前红利（元）")]:fmt(event.gross_amount,2),
+   [t("模拟入账日")]:event.credited_date&&event.credited_date<=cutoff?event.credited_date:'—',
+  }))}/>:<Empty>{t("可见期间内无符合登记条件的现金分红。")}</Empty>}
+ </>;
+}
+
+function SignalEvidence({evidence,showEntryBudget=true}:{evidence?:Row;showEntryBudget?:boolean}){
+ const indicators=evidence?.indicators;
+ if(!indicators)return null;
+ const fields=[
+  {key:'volume_ma',label:'信号成交量均值',scale:1,unit:t('股')},
+  {key:'volume_ratio',label:'信号成交量倍数',scale:1,unit:'×'},
+  {key:'realized_volatility',label:'信号日波动率',scale:100,unit:'%'},
+  ...(showEntryBudget?[{key:'entry_size_multiplier',label:'信号入场预算倍率',scale:1,unit:'×'}]:[]),
+ ].filter(({key})=>Object.hasOwn(indicators,key));
+ return fields.length?<dl className="simulation-evidence-grid">
+  {fields.map(({key,label,scale,unit})=><div key={key}>
+   <dt>{t(label)}</dt><dd>{indicators[key]==null?'—':fmt(indicators[key]*scale,4)+unit}</dd>
+  </div>)}
+ </dl>:null;
+}
+
 function TradeInspector({trade,date,decisions}:{trade:Row|null;date:string;decisions:Row[]}){
  useLocale();
- return <aside className="simulation-inspector" aria-label={t("成交解释")}><div className="simulation-inspector-heading"><span className="eyebrow">{t("成交证据")}</span><h2>{trade?t("{v0} · {v1}", {v0:trade.ticker,v1:t(trade.action==='buy'?'买入':'卖出')}):date?t("当日决策"):t("选择成交查看解释")}</h2><small>{trade?.date||date||t("图表与账本联动")}</small></div>{trade?<><dl className="simulation-evidence-grid"><div><dt>{t("信号日期")}</dt><dd>{trade.signal_date}</dd></div><div><dt>{t("执行日期")}</dt><dd>{trade.date}</dd></div><div><dt>{t("成交股数")}</dt><dd>{fmt(trade.shares,0)}{t("股")}</dd></div><div><dt>{t("执行价格")}</dt><dd>{fmt(trade.price)}{t("元")}</dd></div><div><dt>{t("交易费用")}</dt><dd>{fmt(trade.fee)}{t("元")}</dd></div><div><dt>{t("已实现盈亏")}</dt><dd>{fmt(trade.realized_pnl)}{t("元")}</dd></div></dl><p className="simulation-reason">{t(trade.reason||'')}</p><details><summary>{t("信号指标与原始证据")}</summary><pre>{JSON.stringify(trade.evidence,null,2)}</pre></details></>:date?<div className="simulation-decision-cards">{decisions.length?decisions.map((decision,index)=><article key={decision.id||index}><strong>{t(decision.status||'')}</strong><p>{t(decision.reason||'')}</p><details><summary>{t("决策证据")}</summary><pre>{JSON.stringify(decision.evidence,null,2)}</pre></details></article>):<p className="muted">{t("该日没有记录到交易决策。")}</p>}</div>:<p className="muted">{t("点击蜡烛图日期或成交记录，核对信号、执行价格与费用。")}</p>}</aside>;
+ return <aside className="simulation-inspector" aria-label={t("成交解释")}>
+  <div className="simulation-inspector-heading"><span className="eyebrow">{t("成交证据")}</span><h2>{trade?t("{v0} · {v1}", {v0:trade.ticker,v1:t(trade.action==='buy'?'买入':'卖出')}):date?t("当日决策"):t("选择成交查看解释")}</h2><small>{trade?.date||date||t("图表与账本联动")}</small></div>
+  {trade?<>
+   <dl className="simulation-evidence-grid">
+    <div><dt>{t("信号日期")}</dt><dd>{trade.signal_date}</dd></div><div><dt>{t("执行日期")}</dt><dd>{trade.date}</dd></div>
+    <div><dt>{t("成交股数")}</dt><dd>{fmt(trade.shares,0)}{t("股")}</dd></div><div><dt>{t("执行价格")}</dt><dd>{fmt(trade.price)}{t("元")}</dd></div>
+    <div><dt>{t("交易费用")}</dt><dd>{fmt(trade.fee)}{t("元")}</dd></div><div><dt>{t("已实现盈亏")}</dt><dd>{fmt(trade.realized_pnl)}{t("元")}</dd></div>
+   </dl>
+   <p className="simulation-reason">{t(trade.reason||'')}</p>
+   <SignalEvidence evidence={trade.evidence} showEntryBudget={trade.action==='buy'}/>
+   <details><summary>{t("信号指标与原始证据")}</summary><pre>{JSON.stringify(trade.evidence,null,2)}</pre></details>
+  </>:date?<div className="simulation-decision-cards">
+   {decisions.length?decisions.map((decision,index)=><article key={decision.id||index}>
+    <strong>{t(decision.status||'')}</strong><p>{t(decision.reason||'')}</p>
+    <SignalEvidence evidence={decision.evidence}/>
+    <details><summary>{t("决策证据")}</summary><pre>{JSON.stringify(decision.evidence,null,2)}</pre></details>
+   </article>):<p className="muted">{t("该日没有记录到交易决策。")}</p>}
+  </div>:<p className="muted">{t("点击蜡烛图日期或成交记录，核对信号、执行价格与费用。")}</p>}
+ </aside>;
 }
 
 function Ledger({trades,onSelect,selected}:{trades:Row[];onSelect:(trade:Row)=>void;selected:Row|null}){
@@ -23,12 +75,24 @@ function Ledger({trades,onSelect,selected}:{trades:Row[];onSelect:(trade:Row)=>v
 export default function Terminal({active,playback,busy,onAction}:{active:Row;playback:Playback;busy:boolean;onAction:(action:()=>Promise<void>)=>Promise<void>}){
  useLocale();
  const [lowerTab,setLowerTab]=useState('equity');
- const {session,series,currentDate,visibleSeries,visibleBars,trades,decisions,ticker,cursor,selectedDate,selectedTrade}=playback;
+ const {session,result,series,currentDate,visibleSeries,visibleBars,trades,decisions,ticker,cursor,selectedDate,selectedTrade}=playback;
+ const hasDividends=Array.isArray(result?.dividends);
+ const accountTab=!hasDividends&&lowerTab==='dividends'?'equity':lowerTab;
+ const tabs=[['equity',t("账户权益")],['trades',t("成交账本（{v0}）", {v0:trades.length})],['decisions',t("决策记录")]];
+ if(hasDividends)tabs.push(['dividends',t("现金分红")]);
  const simulation=['backtest','branch'].includes(active.kind);
  const inspectedTrade=selectedTrade||(!selectedDate?[...trades].reverse().find(trade=>trade.ticker===ticker)||null:null);
  const inspectedDate=selectedDate||inspectedTrade?.date||'';
  return <div className="simulation-terminal"><div className="simulation-playback-bar">{session?<><span className="tag">{t("盲测")}{session.date} · {session.cursor+1}/{session.total_steps}</span><div className="actions">{[1,5,20].map(n=><button key={n} className="secondary" disabled={busy||session.revealed||session.cursor>=session.total_steps-1} onClick={()=>onAction(()=>playback.advance('advance',n))}>{t("推进 {days} 日",{days:n})}<ChevronRight size={12}/></button>)}<button className="secondary" disabled={busy||session.revealed} onClick={()=>onAction(()=>playback.advance('reveal'))}>{t("揭晓全部")}</button><button className="text-button" onClick={playback.exitBlind}>{t("退出盲测")}</button></div></>:<><div className="playback"><button className="secondary" onClick={()=>playback.changeCursor(Math.max(0,cursor-1))} disabled={!cursor}>{t("上一日")}</button><input type="range" aria-label={t("历史游标")} min={0} max={Math.max(0,series.length-1)} value={cursor} onChange={e=>playback.changeCursor(Number(e.target.value))}/><span>{currentDate}</span><button className="secondary" disabled={cursor>=series.length-1} onClick={()=>playback.changeCursor(Math.min(series.length-1,cursor+1))}>{t("下一日")}</button></div>{simulation&&<button className="secondary" disabled={busy} onClick={()=>onAction(playback.blind)}><Eye size={14}/>{t("开始盲测")}</button>}</>}</div>
  <div className={'simulation-terminal-grid '+(!simulation?'equity-only':'')}><Panel title={simulation?t("行情与成交"):t("样本外账户路径")} className="simulation-price-panel" action={simulation&&<label className="simulation-symbol-select">{t("证券")}<select aria-label={t("图表证券")} value={ticker} onChange={e=>playback.changeTicker(e.target.value)}>{active.config.tickers.map((symbol:string)=><option value={symbol} key={symbol}>{symbol}</option>)}</select></label>}>{simulation?<SimulationChart bars={visibleBars} trades={trades.filter(trade=>trade.ticker===ticker)} selectedDate={selectedDate} onSelect={playback.pickDate}/>:<Chart rows={visibleSeries} lines={[{key:'equity',name:t("样本外账户权益")}]} unit={t("元 CNY")}/>}</Panel>{simulation&&<TradeInspector trade={inspectedTrade} date={inspectedDate} decisions={decisions.filter(decision=>decision.date===inspectedDate&&decision.ticker===ticker)}/>}</div>
- <section className="panel simulation-lower-panel"><div className="tabs" role="tablist" aria-label={t("账户与账本")}>{[['equity',t("账户权益")],['trades',t("成交账本（{v0}）", {v0:trades.length})],['decisions',t("决策记录")]].map(([id,label])=><button key={id} role="tab" aria-selected={lowerTab===id} className={lowerTab===id?'selected':''} onClick={()=>setLowerTab(id)}>{label}</button>)}</div>{lowerTab==='equity'&&<Chart rows={visibleSeries} lines={[{key:'equity',name:t("策略权益")},{key:'benchmark',name:t("买入持有基准")}]} unit={t("元 CNY")}/>}{lowerTab==='trades'&&<Ledger trades={trades} onSelect={playback.pickTrade} selected={inspectedTrade}/>} {lowerTab==='decisions'&&<><p className="muted">{t("当前可见历史中最近 100 条决策，包含排队、延迟与拒绝原因。")}</p><RawTable rows={decisions.slice(-100).reverse().map(decision=>({[t("日期")]: decision.date,[t("证券")]: decision.ticker,[t("动作")]: t(decision.action),[t("状态")]: t(decision.status||''),[t("原因")]: t(decision.reason||'')}))}/></>}</section>
+ <section className="panel simulation-lower-panel">
+  <div className="tabs" role="tablist" aria-label={t("账户与账本")}>
+   {tabs.map(([id,label])=><button key={id} role="tab" aria-selected={accountTab===id} className={accountTab===id?'selected':''} onClick={()=>setLowerTab(id)}>{label}</button>)}
+  </div>
+  {accountTab==='equity'&&<Chart rows={visibleSeries} lines={[{key:'equity',name:t("策略权益")},{key:'benchmark',name:t(hasDividends?"满仓买入持有价格基准":"买入持有基准")}]} unit={t("元 CNY")}/>}
+  {accountTab==='trades'&&<Ledger trades={trades} onSelect={playback.pickTrade} selected={inspectedTrade}/>}
+  {accountTab==='dividends'&&<DividendLedger events={result.dividends} series={visibleSeries} cutoff={currentDate}/>}
+  {accountTab==='decisions'&&<><p className="muted">{t("当前可见历史中最近 100 条决策，包含排队、延迟与拒绝原因。")}</p><RawTable rows={decisions.slice(-100).reverse().map(decision=>({[t("日期")]: decision.date,[t("证券")]: decision.ticker,[t("动作")]: t(decision.action),[t("状态")]: t(decision.status||''),[t("原因")]: t(decision.reason||'')}))}/></>}
+ </section>
  </div>;
 }

@@ -9,7 +9,7 @@ Read [README.md](README.md) for installation and workflows, then [AGENTS.md](AGE
 QuantSandbox is a local, read-only market research workbench. Contributions must preserve these boundaries:
 
 - Keep brokerage connections, live accounts, and order placement outside the product.
-- Keep fetching explicit and preserve the source, units, observation/report dates, known publication dates, fetch time, and failure reasons. Missing observations remain missing.
+- Keep manual fetching explicit and the default 15:30 Asia/Shanghai ETF schedule visible and configurable; it runs only while the service is running. Preserve the source, units, observation/report dates, known publication dates, fetch time, and failure reasons. Missing observations remain missing.
 - Associate asynchronous results with the project that initiated them. Reuse the selected fixed snapshot when bridging research to a strategy experiment.
 - Keep Obsidian optional: export by default; direct writes require a deliberate single action, preserve existing notes, and never scan a personal vault automatically.
 - Keep user text, original documents, dataset values, and archived evidence intact when changing language or theme.
@@ -48,3 +48,5 @@ This runs backend pytest, frontend interaction tests, and the production build. 
 Open a focused pull request describing the problem, resulting behavior, and validation. Include sanitized screenshots for visible changes and link the relevant issue. Review the staged diff for private content before submitting: `data/`, `exports/`, local company profiles, research records, notes, original attachments, vault settings, tokens, and machine-specific absolute paths belong outside public contributions. Replace sensitive material with a synthetic reproduction; `.gitignore` alone does not sanitize a file or screenshot.
 
 For vulnerabilities, follow [SECURITY.md](SECURITY.md).
+
+For a reviewable archive of local uncommitted changes, use the [local preview workflow](docs/releases.md#local-preview-before-committing). Check the [release readiness checklist](docs/release-readiness.md); record real trading-day observations separately from synthetic-clock tests.

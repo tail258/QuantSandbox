@@ -1,0 +1,13 @@
+.etf-intraday-table { max-height: 340px; overflow: auto; }
+.etf-intraday-table th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.etf-intraday-table + details pre { max-height: 180px; overflow: auto; white-space: pre-wrap; }
+.etf-intraday-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.etf-intraday-tabs [role=tab][aria-selected=false] {
+  background: var(--surface); color: inherit; border: 1px solid var(--border);
+}
+.etf-intraday-tabs [role=tab][aria-selected=true] {
+  background: var(--accent); color: var(--theme-on-accent, white); border: 1px solid var(--accent);
+}
+.etf-intraday-table th:last-child, .etf-intraday-table td:last-child {
+  white-space: normal; max-width: 200px; min-width: 120px; overflow-wrap: anywhere;
+}

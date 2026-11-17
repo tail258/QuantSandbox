@@ -33,6 +33,7 @@ htmlcov/
 test-results/
 playwright-report/
 .local/
+/.codex/config.toml
 release-assets/
 release-repeat/
 

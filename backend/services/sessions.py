@@ -27,6 +27,12 @@ class SessionService:
                    "bars": {ticker: [row for row in rows if row["date"] <= cutoff] for ticker, rows in result["bars"].items()},
                    "decisions": [row for row in result["decisions"] if row["date"] <= cutoff],
                    "checkpoints": [row for row in result["checkpoints"] if row["date"] <= cutoff]}
+        if "dividends" in result:
+            visible["dividends"] = [
+                {**event, **{field: None for field in ("recognized_date", "credited_date")
+                              if event[field] is not None and event[field] > cutoff}}
+                for event in result["dividends"] if event["record_date"] <= cutoff
+            ]
         return {"id": identifier, "run_id": run["id"], "cursor": cursor, "date": cutoff,
                 "total_steps": len(series), "revealed": bool(session["revealed"]),
                 "revealed_at": session["revealed_at"], "source": run["config"]["source"],

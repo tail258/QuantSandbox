@@ -4,17 +4,18 @@ import hashlib
 import json
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 import numpy as np
 import pandas as pd
 
 COLUMNS = ["date", "open", "high", "low", "close", "volume"]
 EXECUTION_COLUMNS = ["is_suspended", "limit_up", "limit_down"]
+DIVIDEND_COLUMNS = ["cash_dividend_per_share", "dividend_ex_date", "dividend_payment_date"]
 
 
 def market_columns(frame: pd.DataFrame) -> list[str]:
-    return COLUMNS + [column for column in EXECUTION_COLUMNS if column in frame.columns]
+    return COLUMNS + [column for column in EXECUTION_COLUMNS + DIVIDEND_COLUMNS if column in frame.columns]
 
 
 class DataUnavailable(RuntimeError):
@@ -40,6 +41,44 @@ def frame_records(frame: pd.DataFrame) -> list[dict]:
 
 def frame_hash(frame: pd.DataFrame) -> str:
     return hashlib.sha256(canonical_json(frame_records(frame)).encode("utf-8")).hexdigest()
+
+
+def validate_dividend_rows(frame: pd.DataFrame) -> None:
+    """Normalize optional cash-distribution data on the stock's record-date bar."""
+    present = [column for column in DIVIDEND_COLUMNS if column in frame]
+    if not present:
+        return
+    if present != DIVIDEND_COLUMNS:
+        raise DataUnavailable("现金分红字段须同时包含每股税前红利、除息日和派息日")
+    fields = frame[DIVIDEND_COLUMNS]
+    missing = fields.isna()
+    events = fields.loc[~missing.all(axis=1)]
+    if missing.loc[events.index].any(axis=None):
+        raise DataUnavailable("同一股权登记日的现金分红字段须全部填写或全部留空")
+    record_dates = frame.loc[events.index, "date"]
+    if frame.loc[frame.date.isin(record_dates), "date"].duplicated().any():
+        raise DataUnavailable("行情包含重复股权登记日期")
+
+    amounts = events["cash_dividend_per_share"]
+    numeric_amounts = pd.to_numeric(amounts, errors="coerce").astype(float)
+    if (amounts.map(lambda value: isinstance(value, (bool, np.bool_))).any()
+            or not np.isfinite(numeric_amounts).all() or not numeric_amounts.gt(0).all()):
+        raise DataUnavailable("每股税前现金红利须为有限正数")
+    frame["cash_dividend_per_share"] = numeric_amounts.reindex(frame.index)
+    for index, row in events.iterrows():
+        ex_text, payment_text = row["dividend_ex_date"], row["dividend_payment_date"]
+        try:
+            ex = date.fromisoformat(ex_text)
+            payment = date.fromisoformat(payment_text)
+            record = pd.Timestamp(frame.at[index, "date"]).date()
+        except (TypeError, ValueError) as exc:
+            raise DataUnavailable("分红的除息日和派息日须使用 YYYY-MM-DD 格式") from exc
+        if pd.isna(record) or ex_text != ex.isoformat() or payment_text != payment.isoformat():
+            raise DataUnavailable("分红的除息日和派息日须使用 YYYY-MM-DD 格式")
+        if not record < ex <= payment:
+            raise DataUnavailable("分红日期须满足股权登记日早于除息日，派息日不早于除息日")
+    for column in DIVIDEND_COLUMNS[1:]:
+        frame[column] = frame[column].astype("string")
 
 
 def atomic_json(path: Path, content) -> None:
@@ -106,6 +145,8 @@ def validate_frame(frame: pd.DataFrame, allow_empty: bool = False) -> pd.DataFra
         both = result[["limit_up", "limit_down"]].dropna()
         if (both.limit_up < both.limit_down).any():
             raise DataUnavailable("涨停价不能小于跌停价")
+    result = result.reset_index(drop=True)
+    validate_dividend_rows(result)
     return result.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
 
 

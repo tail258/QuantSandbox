@@ -6,6 +6,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+from scripts.prepare_preview import prepare, verify
 
 from scripts.package_release import included, package_release, safe_path
 
@@ -113,3 +114,34 @@ def test_preserves_tracked_executable_mode(repository, tmp_path):
     with zipfile.ZipFile(tmp_path / 'executable' / manifest['archive']) as archive:
         member = archive.getinfo('QuantSandbox-v3.2.0/backend/main.py')
         assert member.external_attr >> 16 == 0o100755
+
+def test_local_preview_includes_dirty_source_without_git_mutation(repository, tmp_path):
+    before = command(repository, 'rev-parse', 'HEAD')
+    (repository / 'backend/main.py').write_text('print("local candidate")\n', encoding='utf-8')
+    (repository / 'backend/new_feature.py').write_text('enabled=True\n', encoding='utf-8')
+    first, second = tmp_path / 'preview-a', tmp_path / 'preview-b'
+    manifest = prepare(repository, first)
+    prepare(repository, second)
+    assert manifest['official_release'] is False
+    assert manifest['base_commit'] == before == command(repository, 'rev-parse', 'HEAD')
+    assert verify(repository, first)['matches_current_worktree']
+    assert (first / 'SHA256SUMS').read_bytes() == (second / 'SHA256SUMS').read_bytes()
+    with zipfile.ZipFile(first / manifest['archive']) as archive:
+        assert archive.read('QuantSandbox-local-preview/backend/main.py') == (repository / 'backend/main.py').read_bytes()
+        assert archive.read('QuantSandbox-local-preview/backend/new_feature.py') == (repository / 'backend/new_feature.py').read_bytes()
+        assert not any(any(part in name for part in ['data/', 'exports/', 'node_modules/', 'dist/', '.env', '__pycache__']) for name in archive.namelist())
+    assert str(repository) not in (first / 'preview-manifest.json').read_text()
+    with pytest.raises(ValueError, match='empty'):
+        prepare(repository, first)
+    (repository / 'backend/new_feature.py').write_text('enabled=False\n', encoding='utf-8')
+    with pytest.raises(ValueError, match='changed'):
+        verify(repository, first)
+
+
+def test_local_preview_detects_corrupted_archive(repository, tmp_path):
+    output = tmp_path / 'preview'
+    manifest = prepare(repository, output)
+    with (output / manifest['archive']).open('ab') as stream:
+        stream.write(b'corrupted')
+    with pytest.raises(ValueError, match='checksum'):
+        verify(repository, output)

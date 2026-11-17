@@ -114,6 +114,23 @@ def test_suspended_execution_is_deferred():
     assert any(d["status"] == "deferred" for d in out["decisions"])
 
 
+def test_slippage_past_either_price_limit_defers_without_changing_the_ledger():
+    frame = prices([28, 29, 30, 29, 26, 26], [28, 29, 29.99, 29.5, 25.01, 26])
+    frame["limit_up"] = 30
+    frame["limit_down"] = 25
+    result = run_backtest({"AAA": frame}, config(frame, slippage_bps=5))
+
+    deferred = [d for d in result["decisions"] if d["status"] == "deferred"]
+    assert [(d["date"], d["action"]) for d in deferred] == [("2024-01-03", "buy"), ("2024-01-05", "sell")]
+    assert result["series"][2]["cash"] == 100000
+    assert result["series"][2]["positions"]["AAA"]["shares"] == 0
+    assert result["series"][4]["cash"] == result["series"][3]["cash"]
+    assert result["series"][4]["positions"]["AAA"]["shares"] == result["series"][3]["positions"]["AAA"]["shares"]
+    buy, sell = result["trades"]
+    assert (buy["signal_date"], buy["date"], buy["price"]) == ("2024-01-02", "2024-01-04", 29.51475)
+    assert (sell["signal_date"], sell["date"], sell["price"]) == ("2024-01-04", "2024-01-08", 25.987)
+
+
 def test_final_position_not_forcibly_liquidated_and_result_serializes():
     frame = prices([9, 10, 11, 12, 13])
     out = run_backtest({"AAA": frame}, config(frame))
@@ -137,6 +154,61 @@ def test_aliases_and_flat_rsi_are_well_defined():
     alias = StrategyFactory.generate_signals(frame, "rsi_reversion", {"period": 7, "oversold": 30, "overbought": 70})
     assert alias.rsi.iloc[-1] == 50
     assert (alias.trade_signal == 0).all()
+
+
+def test_volume_confirmation_uses_only_prior_eligible_observed_bars_and_keeps_price_exits():
+    frame = prices([10, 11, 12, 13, 14, 15, 16, 17, 1])
+    frame["volume"] = [100, 0, None, 100, 10000, 100, 120, 0, None]
+    frame["is_suspended"] = [None, False, False, False, True, False, False, False, False]
+    frame.loc[3:, "date"] += pd.Timedelta(days=5)
+    policy = {"fast_period": 2, "slow_period": 3, "volume_window": 2}
+    signals = StrategyFactory.generate_signals(frame, "dual_ma_volume", policy)
+    assert signals.trade_signal.tolist() == [0, 0, 0, 0, 0, 0, 1, 0, -1]
+    assert signals.volume_ratio.isna().tolist() == [True, True, True, True, True, False, False, True, True]
+    assert signals.loc[5:6, "volume_ma"].tolist() == [100, 100]
+    assert signals.loc[5:6, "volume_ratio"].tolist() == [1.0, 1.2]
+    price_only = StrategyFactory.generate_signals(frame, "dual_ma", policy)
+    pd.testing.assert_frame_equal(signals[["fast_ma", "slow_ma"]], price_only[["fast_ma", "slow_ma"]])
+    for stop in range(1, len(frame) + 1):
+        truncated = StrategyFactory.generate_signals(frame.iloc[:stop], "dual_ma_volume", policy)
+        pd.testing.assert_frame_equal(truncated, signals.iloc[:stop])
+
+
+def test_default_volume_warmup_and_close_signal_are_visible_in_the_backtest():
+    frame = prices(list(range(10, 35)))
+    frame["volume"] = 100
+    frame.loc[20, "volume"] = 120
+    cfg = config(frame)
+    cfg["strategy"] = {"name": "dual_ma_volume", "parameters": {}}
+    result = run_backtest({"AAA": frame}, cfg)
+    bars = result["bars"]["AAA"]
+    assert bars[19]["fast_ma"] > bars[19]["slow_ma"]
+    assert bars[19]["volume_ratio"] is None
+    assert result["decisions"][19]["evidence"]["signal"] == 0
+    assert len(result["trades"]) == 1
+    trade = result["trades"][0]
+    assert trade["signal_date"] == bars[20]["date"]
+    assert trade["date"] == bars[21]["date"]
+    assert trade["evidence"]["indicators"]["volume_ma"] == 100
+    assert trade["evidence"]["indicators"]["volume_ratio"] == 1.2
+
+
+def test_budgeted_control_uses_warmup_next_available_open_and_fees_without_end_sale():
+    frame = prices([10, 10, 10, 8], [10, 10, 10, 10])
+    frame.loc[1, "volume"] = 0
+    cfg = config(frame, position_size=.3, commission_rate=.001, min_commission=5)
+    cfg["start_date"] = str(frame.date.iloc[1].date())
+    cfg["strategy"] = {"name": "buy_and_hold", "parameters": {}}
+    result = run_backtest({"AAA": frame}, cfg)
+    assert any(decision["status"] == "deferred" for decision in result["decisions"])
+    assert len(result["trades"]) == 1
+    trade = result["trades"][0]
+    assert (trade["action"], trade["shares"], trade["fee"]) == ("buy", 2900, 29.0)
+    assert trade["signal_date"] == str(frame.date.iloc[0].date())
+    assert trade["date"] == str(frame.date.iloc[2].date())
+    assert result["series"][-1]["cash"] == 70971.0
+    assert result["series"][-1]["positions"]["AAA"]["shares"] == 2900
+    assert result["metrics"]["final_equity"] == 94171.0
 
 
 def test_stress_scenarios_are_computed_from_engine():

@@ -5,7 +5,7 @@ import json
 import re
 from pathlib import Path
 import pandas as pd
-from backend.core.data_format import (DataUnavailable, atomic_json, atomic_parquet,
+from backend.core.data_format import (DIVIDEND_COLUMNS, DataUnavailable, atomic_json, atomic_parquet,
                                       canonical_json, frame_hash, utc_now, validate_frame)
 
 
@@ -29,6 +29,11 @@ class SnapshotStore:
                     "notice": demo_notice if source == "demo" else "未复权价格；当前模型未记账分红送转。",
                     "data_schema": "market-daily-v2" if any(c in frame for c in ("is_suspended", "limit_up", "limit_down")) else "ohlcv-v1",
                     "execution_fields": [c for c in ("is_suspended", "limit_up", "limit_down") if c in frame]}
+        if DIVIDEND_COLUMNS[0] in frame:
+            manifest.update(data_schema="market-daily-v3", dividend_fields=DIVIDEND_COLUMNS.copy(),
+                            dividend_event_count=int(frame[DIVIDEND_COLUMNS[0]].count()))
+            if source != "demo":
+                manifest["notice"] = "未复权价格；仅按快照中的税前现金分红记账，未模拟股息红利税及其他公司行动。"
         if origin is not None:
             manifest["origin"] = origin
         # Same price bytes can have distinct upstream provenance. Keep both manifests.

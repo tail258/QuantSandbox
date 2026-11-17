@@ -25,13 +25,17 @@ def execute_order(ledger, ticker, day, row, order, previous_equity):
         action = "sell" if position["shares"] * raw_price > target_value else "buy"
     suspended = row.get("is_suspended")
     blocked = row.volume <= 0 or (suspended is not None and not pd.isna(suspended) and bool(suspended))
-    if action == "buy" and _number(row.get("limit_up")) is not None:
-        blocked = blocked or raw_price >= float(row.limit_up) - 1e-8
-    if action == "sell" and _number(row.get("limit_down")) is not None:
-        blocked = blocked or raw_price <= float(row.limit_down) + 1e-8
+    limit_up = _number(row.get("limit_up"))
+    limit_down = _number(row.get("limit_down"))
+    if action == "buy" and limit_up is not None:
+        blocked = blocked or raw_price >= limit_up - 1e-8
+    if action == "sell" and limit_down is not None:
+        blocked = blocked or raw_price <= limit_down + 1e-8
     if blocked:
         return {"status": "deferred", "action": action}
     price = raw_price * (1 + settings["slippage_bps"] / 10000 * (1 if action == "buy" else -1))
+    if (limit_up is not None and price > limit_up) or (limit_down is not None and price < limit_down):
+        return {"status": "deferred", "action": action}
     lot = settings["lot_size"]
     realized = 0.0
     closed = False

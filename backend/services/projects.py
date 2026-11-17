@@ -68,7 +68,7 @@ class ProjectStore:
                                (identifier, name.strip(), question.strip(), json.dumps(symbols), now, now))
         return self.require(identifier)
 
-    def update(self, identifier: str, changes: dict):
+    def update(self, identifier: str, changes: dict, *, expected_updated_at: str | None = None):
         self.require(identifier)
         if not changes or not changes.keys() <= {'name', 'question', 'symbols', 'conclusion'}:
             raise ResearchError(422, '请提供项目名称、研究问题、证券或结论')
@@ -85,14 +85,21 @@ class ProjectStore:
             changes['symbols'] = json.dumps(symbols)
         changes['updated_at'] = utc_now()
         assignments = ','.join(f'{key}=?' for key in changes)
+        condition = ' AND updated_at=?' if expected_updated_at is not None else ''
+        arguments = (*changes.values(), identifier)
+        if expected_updated_at is not None:
+            arguments += (expected_updated_at,)
         with self.connect() as connection:
-            connection.execute(f'UPDATE projects SET {assignments} WHERE id=?', (*changes.values(), identifier))
+            updated = connection.execute(f'UPDATE projects SET {assignments} WHERE id=?{condition}', arguments)
+            if updated.rowcount != 1:
+                raise ResearchError(409, '项目已更新，请重新读取后再保存')
         return self.require(identifier)
 
     def link(self, identifier: str, kind: str, run_id: str):
         self.require(identifier)
         now = utc_now()
         with self.connect() as connection:
-            connection.execute('INSERT OR IGNORE INTO project_links VALUES(?,?,?,?)', (identifier, kind, run_id, now))
-            connection.execute('UPDATE projects SET updated_at=? WHERE id=?', (now, identifier))
+            inserted = connection.execute('INSERT OR IGNORE INTO project_links VALUES(?,?,?,?)', (identifier, kind, run_id, now))
+            if inserted.rowcount:
+                connection.execute('UPDATE projects SET updated_at=? WHERE id=?', (now, identifier))
         return self.require(identifier)

@@ -14,16 +14,22 @@ import {
   FolderKanban,
   NotebookPen,
   Play,
+  CirclePlay,
+  CandlestickChart,
+  Settings,
   Menu,
   X,
 } from 'lucide-react'
 import { api, type Row } from './api'
 import { Empty, Note } from './components'
-import { ProjectProvider, useProject, withProject } from './workspace/ProjectContext'
+import { chanPage } from './chan/model'
+import { ProjectProvider, stockPage, strategyDemoPage, useProject, withProject } from './workspace/ProjectContext'
 import './workspace.css'
+import './pages/stock-decision.css'
 
 const pages = {
   projects: lazy(() => import('./pages/Projects')),
+  [stockPage]: lazy(() => import('./pages/StockDecision')),
   data: lazy(() => import('./pages/DataCenter')),
   finance: lazy(() => import('./pages/Finance')),
   us: lazy(() => import('./pages/UsEquities')),
@@ -33,6 +39,8 @@ const pages = {
   stats: lazy(() => import('./pages/Statistics')),
   evidence: lazy(() => import('./pages/Evidence')),
   simulation: lazy(() => import('./pages/Simulation')),
+  [chanPage]: lazy(() => import('./pages/ChanReplay')),
+  [strategyDemoPage]: lazy(() => import('./pages/StrategyDemo')),
   runs: lazy(() => import('./pages/Runs')),
   obsidian: lazy(() => import('./pages/Obsidian')),
 }
@@ -42,6 +50,7 @@ const groups = [
     label: '研究',
     items: [
       ['projects', '研究项目', FolderKanban],
+      [stockPage, '个股与 ETF', CandlestickChart],
       ['finance', '公司与财务', ChartNoAxesCombined],
       ['us', '美股研究', ChartLine],
       ['industry', '产业周期', ChartLine],
@@ -62,6 +71,8 @@ const groups = [
     items: [
       ['stats', '统计实验', FlaskConical],
       ['simulation', '策略与推演', Play],
+      [chanPage, '日线缠论', CandlestickChart],
+      [strategyDemoPage, '离线策略演示', CirclePlay],
     ],
   },
   {
@@ -74,7 +85,7 @@ const groups = [
     ],
   },
 ] as const
-const route = () => location.hash.slice(1).split('?')[0] || 'projects'
+const route = () => location.hash.slice(1).split('?')[0] || stockPage
 export type PageProps = { status: Row; reload: () => Promise<void>; setPage: (p: string) => void }
 class PageBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -94,11 +105,11 @@ class PageBoundary extends Component<{ children: ReactNode }, { failed: boolean 
     )
   }
 }
-function Workspace() {
+function Workspace({ page, setPage, researchOpened }: { page: string; setPage: (page: string) => void; researchOpened: boolean }) {
   const locale = useLocale()
   const theme = useTheme()
   const { activeProject, projects, selectProject, error: projectError } = useProject()
-  const [page, setPage] = useState(route)
+  const isDemo = page === strategyDemoPage
   const [mobileGroup, setMobileGroup] = useState('research')
   const [moreOpen, setMoreOpen] = useState(false)
   const [status, setStatus] = useState<Row>({
@@ -120,17 +131,15 @@ function Workspace() {
     }
   }, [])
   useEffect(() => {
+    if (!researchOpened || page === stockPage) return
     let live = true
     reload().catch((e) => {
       if (live) setError(e.message)
     })
-    const onhash = () => setPage(route())
-    window.addEventListener('hashchange', onhash)
     return () => {
       live = false
-      window.removeEventListener('hashchange', onhash)
     }
-  }, [reload])
+  }, [researchOpened, reload, page === stockPage])
   useEffect(() => {
     window.scrollTo(0, 0)
     const group = groups.find((g) => g.items.some((item) => item[0] === page))
@@ -144,13 +153,40 @@ function Workspace() {
       setPage(target.split('?')[0])
       setMoreOpen(false)
     },
-    [activeProject?.id],
+    [activeProject?.id, setPage],
   )
   const active =
     groups.flatMap((g) => [...g.items]).find((item) => item[0] === page) || groups[0].items[0]
   const activeGroup = groups.find((g) => g.items.some((item) => item[0] === page)) || groups[0]
   const Page = pages[active[0]]
   const mobileItems = groups.find((g) => g.id === mobileGroup)?.items || groups[0].items
+  if (page === stockPage) return <div className="stock-shell">
+    <div className="stock-shell-top" role="banner">
+      <a className="stock-logo" href="#stock" aria-label={t('个股与 ETF')}><b>QS</b><strong>QuantSandbox</strong></a>
+      <nav aria-label={t('市场')}>
+        <a href="#stock" aria-current="page">{t('A 股')}</a>
+        <a href={'#' + withProject('us', activeProject?.id)}>{t('美股')}</a>
+      </nav>
+      <a className="stock-global-projects" href={'#' + withProject('projects', activeProject?.id)}>{t('研究项目')}</a>
+      <details className="stock-shell-settings">
+        <summary title={t('设置')} aria-label={t('设置')}><Settings size={19} aria-hidden="true"/></summary>
+        <div>
+          <a className="stock-menu-projects" href={'#' + withProject('projects', activeProject?.id)}>{t('研究项目')}</a>
+          <label>{t('界面主题')}<select value={theme} onChange={event => setTheme(event.target.value === 'terminal' ? 'terminal' : 'light')}>
+            <option value="light">{t('经典浅色')}</option><option value="terminal">{t('金融终端')}</option>
+          </select></label>
+          <label>{t('界面语言')}<select value={locale} onChange={event => setLocale(event.target.value === 'zh' ? 'zh' : 'en')}>
+            <option value="zh">简体中文</option><option value="en">English</option>
+          </select></label>
+        </div>
+      </details>
+    </div>
+    <main className="stock-shell-main">
+      <PageBoundary key={page}><Suspense fallback={<Empty>{t('正在打开{page}…', { page: t(active[1]) })}</Empty>}>
+        <Page status={status} reload={reload} setPage={go}/>
+      </Suspense></PageBoundary>
+    </main>
+  </div>
   return (
     <div className="shell workspace-shell">
       <aside className="workspace-rail">
@@ -189,21 +225,27 @@ function Workspace() {
             <b>/</b>
             <strong>{t(active[1])}</strong>
           </div>
-          <label className="header-project-picker">
-            <span>{t('当前项目')}</span>
-            <select
-              aria-label={t('当前研究项目')}
-              value={activeProject?.id || ''}
-              onChange={(e) => selectProject(e.target.value).catch(() => {})}
-            >
-              <option value="">{t('独立研究')}</option>
-              {projects.map((p) => (
-                <option value={p.id} key={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {isDemo ? (
+            <a className="header-project-picker demo-back-link" href={'#' + withProject('projects', activeProject?.id)}>
+              {t('返回研究项目')}
+            </a>
+          ) : (
+            <label className="header-project-picker">
+              <span>{t('当前项目')}</span>
+              <select
+                aria-label={t('当前研究项目')}
+                value={activeProject?.id || ''}
+                onChange={(e) => selectProject(e.target.value).catch(() => {})}
+              >
+                <option value="">{t('独立研究')}</option>
+                {projects.map((p) => (
+                  <option value={p.id} key={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="language-picker theme-picker">
             <span>{t('界面主题')}</span>
             <select aria-label={t('界面主题')} value={theme} onChange={e => setTheme(e.target.value === 'terminal' ? 'terminal' : 'light')}>
@@ -258,7 +300,7 @@ function Workspace() {
             ))}
           </div>
         </div>
-        {activeProject && page !== 'projects' && (
+        {activeProject && page !== 'projects' && !isDemo && (
           <div className="project-context-strip">
             <a href={'#' + withProject('projects', activeProject.id)}>{activeProject.name}</a>
             <span>{activeProject.symbols.join(' · ') || t('未关联证券')}</span>
@@ -266,7 +308,7 @@ function Workspace() {
           </div>
         )}
         <main>
-          {error && (
+          {error && !isDemo && (
             <Note tone="warn">
               {t('研究数据服务：')}{t(error)}
               <button
@@ -277,7 +319,7 @@ function Workspace() {
               </button>
             </Note>
           )}
-          {projectError && <Note tone="warn">{t(projectError)}</Note>}
+          {projectError && !isDemo && <Note tone="warn">{t(projectError)}</Note>}
           <PageBoundary key={page}>
             <Suspense fallback={<Empty>{t('正在打开{page}…', {page: t(active[1])})}</Empty>}>
               <Page status={status} reload={reload} setPage={go} />
@@ -292,9 +334,24 @@ function Workspace() {
   )
 }
 export default function App() {
+  const [{ page, researchOpened }, setNavigation] = useState(() => {
+    const page = route()
+    return { page, researchOpened: page !== strategyDemoPage }
+  })
+  const setPage = useCallback((next: string) => {
+    setNavigation(current => current.page === next ? current : {
+      page: next,
+      researchOpened: current.researchOpened || next !== strategyDemoPage,
+    })
+  }, [])
+  useEffect(() => {
+    const onHash = () => setPage(route())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [setPage])
   return (
-    <ProjectProvider>
-      <Workspace />
+    <ProjectProvider enabled={researchOpened}>
+      <Workspace page={page} setPage={setPage} researchOpened={researchOpened} />
     </ProjectProvider>
   )
 }

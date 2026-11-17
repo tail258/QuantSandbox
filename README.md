@@ -31,7 +31,7 @@ Start with [the offline example](#reproduce-an-experiment) to generate and verif
 
 ## One workspace, from question to evidence
 
-QuantSandbox connects a research question to its data, assumptions, experiments, and saved conclusions. The browser, CLI, and API share the same Python calculations. Research records stay on your device. Live data is fetched on demand by default.
+QuantSandbox connects a research question to its data, assumptions, experiments, and saved conclusions. The browser, CLI, and API share the same Python calculations. Data and research records stay in your local workspace. Fetch public market data on demand; ETF flows also supports a local daily refresh schedule.
 
 <table>
   <tr>
@@ -44,7 +44,7 @@ QuantSandbox connects a research question to its data, assumptions, experiments,
   </tr>
 </table>
 
-The workbench focuses on mainland China's A-share market. It includes rubber-industry observations and four built-in strategies: moving-average crossover, Bollinger bands, RSI reversal, and momentum. Experiments include historical forks, cost stress, parameter sensitivity, rolling out-of-sample evaluation, and blind replay.
+The workbench focuses on mainland China's A-share market. Its daily strategies include dual moving averages, Bollinger bands, RSI reversal, and momentum. You can compare the dual moving-average rule with volume confirmation or volatility-based entry sizing, and use budgeted buy and hold as a control. Experiments include historical forks, cost stress, parameter sensitivity, rolling out-of-sample evaluation, and blind replay.
 
 ## US company research · initial scope
 
@@ -52,12 +52,12 @@ A separate US research module starts with **McDonald’s (NYSE: MCD)**: explicit
 
 ## Quick start
 
-**Choose a source:** Use the commands below for the current public main branch, or download the [tagged source release](https://github.com/tail258/QuantSandbox/releases/tag/v3.2.0) for a fixed version. The McDonald’s research module described above is on main and was added after that tag.
+**Choose a source:** Use the commands below for the current public main branch, or download the [tagged source release](https://github.com/tail258/QuantSandbox/releases/tag/v3.2.0) for a fixed version. Use main for the latest instrument research, daily Chan replay, and strategy updates described here.
 
 **Windows:** Python **3.12+**, Node.js **22.12+**, and PowerShell **7+**. Python 3.12 and Node 22 are used by CI. Installation needs internet access for dependencies; the synthetic example runs offline after installation.
 
 ```powershell
-git clone https://github.com/tail258/QuantSandbox.git
+git clone https://github.com/tail258/QuantSandbox.git QuantSandbox
 Set-Location QuantSandbox
 .\setup.cmd
 .\start.cmd
@@ -65,7 +65,22 @@ Set-Location QuantSandbox
 
 Open **http://127.0.0.1:8766**. The service listens on your computer only. On later visits, run `start.cmd`; stop this workspace with `pwsh -NoProfile -File stop.ps1`.
 
+Windows setup also configures the project-local QuantSandbox MCP server. Codex can find research projects, reuse frozen data, preview and submit backtests, read evidence, and save conclusions. If already installed, run `pwsh -File scripts/enable-codex.ps1` to configure MCP. See the [Codex workflow (Chinese)](docs/codex-workflow.zh-CN.md).
+
 The interface starts in **English**. Use the top-bar language and **Appearance** selectors to switch to Chinese or the dark Financial terminal theme. Preferences stay in the current browser. Company names, user notes, source documents, and archived evidence retain their original text.
+
+**ETF refresh:** use **Refresh now** on ETF flows, or let the workspace fetch daily at **15:30 Asia/Shanghai** by default. You can change the time or disable automatic fetching. The service must be running; source dates and warnings show whether the latest shares and NAVs have actually been published. See the [ETF methodology](docs/etf-methodology.md).
+
+ETF flows also offers lightweight batch quotes and same-time turnover comparisons using completed five-minute bars. Quote polling and historical baseline updates run separately; source times, eligible samples and missing data stay visible. See the [intraday guide](docs/etf-intraday.md).
+
+<details>
+<summary><strong>Preview the offline synthetic ETF example</strong></summary>
+
+![Synthetic ETF example: fixed artificial inputs, source precision, 20 samples and a 1.5 turnover ratio](docs/images/etf-demo-en.png)
+
+Open **ETF flows → View synthetic demo**. The example uses artificial data and a fixed clock; it does not download prices or replace your research data.
+
+</details>
 
 <details>
 <summary><strong>Manual setup, including Linux/macOS</strong></summary>
@@ -82,6 +97,12 @@ python -m uvicorn backend.main:app --host 127.0.0.1 --port 8766
 For production-only Python dependencies, use `requirements.txt`; add `requirements-market.txt` for live providers. The offline reproduction tool requires the development dependencies. The lock file constrains Python dependency versions, and `npm ci` uses the committed package lock.
 
 </details>
+
+On the **Projects** home page, choose **Open offline strategy demo**. Start with a daily moving-average question, run the baseline, change the windows on the same synthetic snapshot, and replay the evidence. The demo needs the local service and leaves your research projects, runs, and caches untouched.
+
+Use **Chan structure** in a research project to inspect daily fractals, strokes, segments, and centers on a fixed snapshot or in the offline example. Step through when each structure appears and is confirmed, then download and verify the original replay evidence. See the [daily replay guide (Chinese)](docs/chan-replay.zh-CN.md) and the [project handoff (Chinese)](HANDOFF.md).
+
+Read the [first-run guide](docs/getting-started.md) for the strategy and ETF demos, refresh controls, and a first saved research project. Maintainers can follow the [release readiness checklist](docs/release-readiness.md).
 
 ## Reproduce an experiment
 
@@ -116,7 +137,7 @@ This example is explicitly synthetic. Your existing datasets, research projects,
 | Missing data | Missing values remain missing. Provider failures stay visible; live-data failures never silently become synthetic prices. |
 | Financial statements | Income and cash-flow cumulative amounts are split into quarters; balance-sheet balances are not differenced. Ratios are recomputed. Currently revised statements are not a complete historical point-in-time archive. |
 | Statistics | Transform, alignment, frequency, lag direction, sample count, baseline, and interval accompany the result. Correlation and repeated parameter searches need separate validation. |
-| Execution | Daily closing signals execute no earlier than the next tradable session's open. Explicit suspension and price-limit fields survive snapshots and replay. Corporate actions and complete delisting returns are not yet booked. |
+| Execution | Daily closing signals execute no earlier than the next tradable session's open. Suspension, price limits, and sourced gross cash dividends survive snapshots and replay. Cash dividends are credited after the payment-date opening match. Dividend tax, non-cash actions, and complete delisting returns are outside the model. |
 | Market proxies | ETF subscriptions/redemptions and margin data cannot identify a specific trading entity. State-backed holdings require original disclosure evidence. RU0 is a vendor continuous series, not a directly tradable total-return contract. |
 | Evidence | Content hashes check integrity. Import replays the saved inputs with the current engine and reports differences. A hash is not third-party certification. |
 

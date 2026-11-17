@@ -20,20 +20,41 @@
 
 ## 打开与安装
 
-下面的命令克隆当前公开 main；需要固定版本，可下载 [v3.2.0 源码包](https://github.com/tail258/QuantSandbox/releases/tag/v3.2.0)。上文的麦当劳研究模块在该标签之后加入，需使用当前 main。
+下面的命令克隆当前公开 main；需要固定版本，可下载 [v3.2.0 源码包](https://github.com/tail258/QuantSandbox/releases/tag/v3.2.0)。新版标的研究、日线缠论重放和策略更新可从 main 获取。
 
-已有环境双击 `start.cmd`，打开 **http://127.0.0.1:8766**。只监听本机；默认不自动刷新行情或写入笔记库。
+已有环境双击 `start.cmd`，打开 **http://127.0.0.1:8766**。只监听本机；ETF资金观察支持“立即刷新”，默认每天北京时间15:30自动取数，可关闭或修改时间。自动取数仅在工作区服务运行时执行，保留实际数据日期、来源和失败原因；不自动写入笔记库。详见[ETF方法说明](docs/etf-methodology.md)。
 
 界面默认英文，可在顶部切换 English / 中文。主题提供原有经典浅色与黑灰金色的金融终端主题；语言和主题选择保存在当前浏览器，刷新后保留。切换只影响界面展示，研究原文、用户输入和归档证据保留原样。
 
+ETF页面还提供轻量盘中报价及完整5分钟时点的成交额比较，报价与历史基准分开更新，显示来源时间、有效样本和缺口；详见[盘中方法说明](docs/etf-intraday.zh-CN.md)。
+
+<details>
+<summary><strong>预览离线合成ETF演示</strong></summary>
+
+![合成ETF示例：固定人工输入、来源精度、20个样本和1.5倍成交额比值](docs/images/etf-demo-zh.png)
+
+进入 **ETF资金 → 查看合成演示**。示例使用人工数据与固定时钟，不下载行情，也不替换本机研究数据。
+
+</details>
+
 ```powershell
-git clone https://github.com/tail258/QuantSandbox.git
+git clone https://github.com/tail258/QuantSandbox.git QuantSandbox
 Set-Location QuantSandbox
 .\setup.cmd
 .\start.cmd
 ```
 
 Windows 需要 Python 3.12+、Node.js 22.12+ 和 PowerShell 7。安装包括公开行情依赖与前端构建；生产运行只需要 Python。停止：`pwsh -NoProfile -File stop.ps1`。Codex 启动使用 `pwsh -NoProfile -File start.ps1 -NoBrowser`。
+
+**让 Codex 驱动研究：** Windows 安装会写入本项目的 MCP 配置。Codex 可以查项目和固定快照、预检并提交回测、查证据及保存项目结论。已装好环境时，直接运行 `pwsh -File scripts/enable-codex.ps1`。详见 [Codex 工作流](docs/codex-workflow.zh-CN.md)。
+
+在**研究项目**首页选择**打开离线策略演示**。从一个日线均线问题出发，先运行基准策略，再在同一份合成快照上调整窗口并重放证据。演示需要本机服务，不改动真实研究项目、记录或缓存。
+
+在研究项目打开**缠论结构**，用固定日线快照或离线示例逐根查看分型、笔、线段和中枢。时间轴保留结构首次出现、确认和撤销，支持导出原始证据并重放。见[日线缠论使用说明](docs/chan-replay.zh-CN.md)和[项目交接](HANDOFF.md)。
+
+首次使用可按[上手指南](docs/getting-started.zh-CN.md)体验离线策略与 ETF 演示、区分刷新按钮，再保存第一个研究项目。维护者见[发行验收清单](docs/release-readiness.zh-CN.md)和[策略研究开发计划](docs/strategy-development-plan.zh-CN.md)。
+
+首页可直接打开沪深股票或 ETF，看到已完成日线、周线、可定位的结构依据和观察条件。详见[个股与 ETF 研究](docs/stock-decision.zh-CN.md)。
 
 ## 页面与研究流程
 
@@ -59,7 +80,7 @@ Obsidian 默认显示排版笔记，可切换 Markdown 源码；本机路径设�
 | 产业周期 | 橡胶价格与行业指标观察，缺失数据保留导入与检索入口 |
 | ETF 与国家队足迹 | 交易所份额、净值估算申赎、历史分位、融资对照、原文持仓和公告时间线 |
 | 统计实验 | 变换、领先滞后、条件概率、样本量、基准与 Wilson 区间 |
-| 策略实验 | 多标的共享资金、双均线/布林带/RSI/动量、成交解释、分叉、压力/参数/滚动样本外实验 |
+| 策略实验 | 双均线、成交量确认、波动率入场控制、布林带、RSI、动量、预算内买入持有。支持共享账户、成交解释和对照实验 |
 | 逐日推演 | 按游标推进，盲测与揭晓，保留成交、决策和账户审计 |
 | 证据归档 | 原始快照、参数、引擎指纹、结果导出与重放校验 |
 | Obsidian | 可选 Markdown 与附件包；本机配置笔记库，预览后手动写入 |
@@ -70,7 +91,7 @@ Obsidian 默认显示排版笔记，可切换 Markdown 源码；本机路径设�
 
 真实行情依赖公开上游，失败会明确报告；不会静默替换成演示行情。演示来源为合成数据。新克隆仓库没有本机缓存或个人研究档案，可先运行合成示例，再手动获取真实数据。
 
-财报接口可能返回当前修订版本；公告日已知也不代表拥有完整历史披露版本。国家队持仓以原文实体证据为准，ETF 申赎与融资只是市场代理。固定当前成分名单回看历史不作为时点选股证据。策略采用日线撮合，尚未记账公司行为或完整退市收益；收益需结合假设阅读。数据提供的停牌、涨停价和跌停价字段会保留到缓存、快照和证据包，并参与内容哈希；未知字段值保持 null，行情源未提供时不自行推断。
+财报接口可能返回当前修订版本。国家队持仓以原文实体证据为准，ETF 申赎与融资只是市场代理。固定当前成分名单回看历史不作为时点选股证据。策略采用未复权日线撮合，含公告证据的快照可记账税前现金红利。停牌、涨跌停价及分红字段随快照和证据包保存并参与哈希，未知字段留空。分红税、非现金公司行动和完整退市收益尚未建模。
 
 方法见 [统计与财务](docs/methodology.md)、[ETF](docs/etf-methodology.md)、[国家队足迹](docs/national-methodology.md)、[回测口径](docs/RESEARCH_NOTES.md)。
 
