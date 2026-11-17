@@ -26,6 +26,12 @@ def calculate_metrics(series: list[dict], trades: list[dict], initial_cash: floa
     positions = series[-1].get("positions", {}) if series else {}
     open_count = sum(int(p.get("shares", 0)) > 0 for p in positions.values())
     benchmark_return = (series[-1].get("benchmark", initial_cash) / initial_cash - 1) * 100 if series else 0
+    dividends = {}
+    if series and "dividend_cash_paid" in series[-1]:
+        dividends = {
+            "dividend_cash_paid": round(sum(row["dividend_cash_paid"] for row in series), 2),
+            "dividend_receivables": round(series[-1]["dividend_receivables"], 2),
+        }
     return {"initial_cash": round(initial_cash, 2), "final_equity": round(final, 2),
             "total_return": round((final / initial_cash - 1) * 100, 4),
             "annualized_return": round(annual * 100, 4) if math.isfinite(annual) else None,
@@ -39,6 +45,7 @@ def calculate_metrics(series: list[dict], trades: list[dict], initial_cash: floa
             "realized_pnl": round(sum(t.get("realized_pnl", 0) for t in trades), 2),
             "benchmark_return": round(benchmark_return, 4),
             "excess_return": round((final / initial_cash - 1) * 100 - benchmark_return, 4),
-            "trading_days": len(series), "ending_cash": round(series[-1]["cash"], 2) if series else round(initial_cash, 2)}
+            "trading_days": len(series), "ending_cash": round(series[-1]["cash"], 2) if series else round(initial_cash, 2),
+            **dividends}
 
 

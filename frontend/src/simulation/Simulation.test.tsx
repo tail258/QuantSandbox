@@ -20,7 +20,20 @@ vi.mock('../components',()=>({
 }));
 
 let database:Record<string,Row>;
-const catalog={defaults:defaultConfig,tickers:[{ticker:'000858'},{ticker:'600036'}],strategies:[{name:'dual_ma',label:'双均线',parameters:[{key:'fast_period',label:'快线周期',default:5,min:2,max:500},{key:'slow_period',label:'慢线周期',default:20,min:2,max:500}]}]};
+const maParameters=[{key:'fast_period',label:'快线周期',default:5,min:2,max:500},{key:'slow_period',label:'慢线周期',default:20,min:3,max:500}];
+const catalog={defaults:defaultConfig,tickers:[{ticker:'000858'},{ticker:'600036'}],strategies:[
+ {name:'dual_ma',label:'双均线',parameters:maParameters},
+ {name:'dual_ma_volume',label:'双均线放量',description:'短期均线高于长期均线且成交量达到阈值时入场，反向退出。',parameters:[
+  ...maParameters,{key:'volume_window',label:'成交量窗口',default:20,min:2,max:500},
+  {key:'volume_threshold',label:'成交量倍数阈值',default:1.2,min:.01,max:500,step:.01},
+ ]},
+ {name:'dual_ma_volatility',label:'双均线波动控制',description:'双均线入场时用已观察的滚动波动率调整预算，保留原出场规则。',parameters:[
+  ...maParameters,{key:'volatility_window',label:'波动率窗口',default:20,min:2,max:500},
+  {key:'volatility_threshold',label:'日波动率阈值（小数）',default:.03,min:.001,max:1,step:.001},
+  {key:'high_volatility_multiplier',label:'高波动入场预算倍率',default:.5,min:.05,max:1,step:.05},
+ ]},
+ {name:'buy_and_hold',label:'预算内买入持有',description:'首次观测收盘后，按配置仓位在后续可交易日开盘入场，持有至回测结束。',parameters:[]},
+]};
 const dates=['2024-01-02','2024-01-03','2024-01-04'];
 function fixture(id='run-a',kind='backtest'):Row{
  const config={...cloneConfig(defaultConfig),name:id==='run-a'?'基线 A':'基线 B',tickers:['000858'],start_date:dates[0],end_date:dates[2]};
@@ -51,6 +64,77 @@ beforeEach(()=>{setLocale('zh');
 afterEach(()=>{cleanup();setLocale('en');vi.clearAllMocks()});
 
 describe('Simulation workbench interactions',()=>{
+ it('submits the selected catalog strategy with its own parameters',async()=>{
+  render(<Simulation {...pageProps}/>);
+  await screen.findByRole('tab',{name:'推演终端'});
+  fireEvent.click(screen.getByRole('button',{name:'新建回测'}));
+  const composer=within(screen.getByRole('dialog'));
+  const strategy=composer.getByLabelText('策略');
+  fireEvent.change(strategy,{target:{value:'dual_ma_volume'}});
+  expect(composer.getByLabelText('成交量窗口')).toHaveProperty('value','20');
+  expect(composer.getByLabelText('成交量倍数阈值')).toHaveProperty('value','1.2');
+  fireEvent.change(composer.getByLabelText('成交量倍数阈值'),{target:{value:'2.5'}});
+  fireEvent.change(strategy,{target:{value:'buy_and_hold'}});
+  expect(composer.queryByLabelText('快线周期')).toBeNull();
+  expect(composer.queryByLabelText('成交量倍数阈值')).toBeNull();
+  fireEvent.change(strategy,{target:{value:'dual_ma_volatility'}});
+  expect(composer.getByLabelText('日波动率阈值（小数）')).toHaveProperty('value','0.03');
+  fireEvent.change(composer.getByLabelText('高波动入场预算倍率'),{target:{value:'0.25'}});
+  fireEvent.click(composer.getByRole('button',{name:'提交回测'}));
+  await waitFor(()=>expect(http.post).toHaveBeenCalledWith('/runs',expect.objectContaining({strategy:{
+   name:'dual_ma_volatility',parameters:{fast_period:5,slow_period:20,volatility_window:20,volatility_threshold:.03,high_volatility_multiplier:.25},
+  }})));
+ });
+
+ it('keeps pressure experiments and historical forks for budgeted buy and hold',async()=>{
+  database['run-a'].config.strategy={name:'buy_and_hold',parameters:{}};
+  render(<Simulation {...pageProps}/>);
+  fireEvent.click(await screen.findByRole('tab',{name:'实验室'}));
+  fireEvent.click(screen.getByRole('button',{name:'新建对照'}));
+  const comparison=within(screen.getByRole('dialog'));
+  expect(comparison.getAllByRole('option').map(option=>(option as HTMLOptionElement).value)).toEqual(['pressure','branch']);
+  fireEvent.click(comparison.getByRole('button',{name:'提交对照'}));
+  await waitFor(()=>expect(http.post).toHaveBeenCalledWith('/runs/run-a/experiments',{kind:'pressure'}));
+ });
+
+ it('keeps a dividend receivable visible before cash is credited',async()=>{
+  const result=database['run-a'].result;
+  result.series[0]={...result.series[0],dividend_cash_paid:0,dividend_receivables:0};
+  result.series[1]={...result.series[1],dividend_cash_paid:0,dividend_receivables:25};
+  result.series[2]={...result.series[2],dividend_cash_paid:25,dividend_receivables:0};
+  result.dividends=[{ticker:'000858',record_date:dates[0],ex_date:dates[1],payment_date:dates[2],
+   shares:100,cash_per_share:.25,gross_amount:25,credited_date:dates[2]}];
+  render(<Simulation {...pageProps}/>);
+  fireEvent.click(await screen.findByRole('tab',{name:'现金分红'}));
+  expect(screen.getByText(new RegExp(`000858.*${dates[2]}.*${dates[2]}`))).toBeTruthy();
+  const summary=screen.getByText('累计入账税前红利').parentElement!;
+  expect(summary.querySelector('dd')?.textContent).toBe('25 元 CNY');
+  fireEvent.click(screen.getByRole('button',{name:'上一日'}));
+  expect(screen.getByText(new RegExp(`000858.*${dates[2]}.*—`))).toBeTruthy();
+  expect(summary.querySelector('dd')?.textContent).toBe('0 元 CNY');
+  expect(screen.getByText('期末应收税前红利').parentElement!.querySelector('dd')?.textContent).toBe('25 元 CNY');
+ });
+
+ it.each([
+  {name:'dual_ma_volume',indicators:{volume_ma:1000,volume_ratio:1.5},labels:['信号成交量均值','信号成交量倍数'],displays:['1,000股','1.5×']},
+  {name:'dual_ma_volatility',indicators:{realized_volatility:.0234,entry_size_multiplier:.5},labels:['信号日波动率','信号入场预算倍率'],displays:['2.34%','0.5×']},
+ ])('shows $name signal evidence only at a visible replay date',async({name,indicators,labels,displays})=>{
+  const run=database['run-a'];
+  const evidence={strategy:name,indicators};
+  run.config.strategy={name,parameters:{}};
+  run.result.trades[1].evidence=evidence;
+  run.result.decisions=[{id:'volume-decision',date:dates[1],ticker:'000858',status:'queued',reason:'等待策略条件',evidence}];
+  render(<Simulation {...pageProps}/>);
+  const inspector=within(await screen.findByRole('complementary',{name:'成交解释'}));
+  for(const label of labels.filter(label=>label!=='信号入场预算倍率'))expect(inspector.getByText(label)).toBeTruthy();
+  for(const display of displays.filter(display=>display!=='0.5×'))expect(inspector.getByText(display)).toBeTruthy();
+  expect(inspector.queryByText('信号入场预算倍率')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'上一日'}));
+  for(const label of labels)expect(inspector.queryByText(label)).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:`${dates[1]} 收盘 22`}));
+  for(const display of displays)expect(inspector.getByText(display)).toBeTruthy();
+ });
+
  it('switches labels live without losing the selected record or an edited draft',async()=>{
   render(<Simulation {...pageProps}/>);
   await screen.findByRole('tab',{name:'笔记与证据'});

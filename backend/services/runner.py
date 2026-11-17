@@ -68,7 +68,7 @@ def execute_job(root: str, identifier: str) -> None:
         if run.get("expected_result"):
             # Compare meaningful deterministic values; presentation metadata may differ.
             expected = run["expected_result"]
-            compared = [key for key in ["metrics", "series", "trades", "scenarios", "variants", "folds"] if key in expected]
+            compared = [key for key in ["metrics", "series", "trades", "scenarios", "variants", "folds", "dividends"] if key in expected]
             differences = [key for key in compared if result.get(key) != expected[key]]
             result["replay_verification"] = {"matched": bool(compared) and not differences, "compared_fields": compared,
                                                "different_fields": differences, "notice": "使用当前引擎与导入数据重新计算"}

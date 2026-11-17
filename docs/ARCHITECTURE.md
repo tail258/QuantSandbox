@@ -25,7 +25,7 @@ flowchart LR
 
 `backend/api/routes` owns HTTP paths, request/response validation and status codes. Domain validation belongs in services. Expected strategy failures use `ResearchError`; provider failures remain visible. `JobRunner` manages calculation processes, progress, cancellation and interrupted-job recovery. Experiment functions receive inputs and configuration independently of HTTP lifetimes.
 
-The server binds localhost. Public data fetching is explicit; the application has no brokerage, account-trading or live-order integration.
+The server binds localhost. Public data fetching is on demand, with an ETF daily schedule enabled by default at 15:30 Asia/Shanghai. `backend/workbench/etf_schedule.py` owns local settings and a service-lifetime scheduler; `run_jobs=False` disables it in isolated tests. The application has no brokerage, account-trading or live-order integration.
 
 ## Research, projects and immutable inputs
 

@@ -124,9 +124,13 @@ class ResearchService:
         if parent["kind"] == "branch":
             raise ResearchError(422, "请从基线运行实验；分支实验尚未支持。")
         options = request.model_dump(mode="json")
+        strategy = parent["config"]["strategy"]
+        if strategy["name"] == "buy_and_hold" and request.kind in {"parameter", "walk_forward"}:
+            raise ResearchError(422, "预算内买入持有没有可供筛选的策略参数。")
         if request.kind == "parameter":
-            options["parameter"] = request.parameter or ("fast_period" if parent["config"]["strategy"]["name"] == "dual_ma" else "window")
-            strategy = parent["config"]["strategy"]
+            default_parameter = {"dual_ma": "fast_period", "dual_ma_volume": "volume_threshold",
+                                 "dual_ma_volatility": "volatility_threshold"}
+            options["parameter"] = request.parameter or default_parameter.get(strategy["name"], "window")
             metadata = next(item for item in strategy_catalog() if item["name"] == strategy["name"])
             parameter = next((item for item in metadata["parameters"] if item["key"] == options["parameter"]), None)
             if parameter is None:

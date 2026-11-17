@@ -132,6 +132,49 @@ def test_export_import_recomputes_and_rejects_tampering(client, run):
     assert client.post("/api/import", json=invalid).status_code == 422
 
 
+@pytest.mark.parametrize("name", ["dual_ma_volume", "buy_and_hold"])
+def test_daily_strategies_run_through_api_and_recompute_on_evidence_import(client, name):
+    response = client.post("/api/runs", json={"tickers": ["000858"], "start_date": "2024-01-01", "end_date": "2024-06-30",
+                                              "strategy": {"name": name}})
+    assert response.status_code == 202, response.text
+    study = complete(client, response.json())
+    assert study["result"]["trades"]
+    package = client.get(f"/api/runs/{study['id']}/export")
+    response = client.post("/api/import", content=package.content, headers={"Content-Type": "application/json"})
+    assert response.status_code == 202, response.text
+    replay = complete(client, response.json())
+    assert replay["result"]["replay_verification"]["matched"]
+    for key in ("bars", "decisions", "checkpoints"):
+        assert replay["result"][key] == study["result"][key]
+
+
+def test_experiments_keep_volume_strategy_and_skip_tuning_the_control(client):
+    common = {"tickers": ["000858"], "start_date": "2024-01-01", "end_date": "2024-06-30"}
+    response = client.post("/api/runs", json={**common, "strategy": {"name": "dual_ma_volume"}})
+    assert response.status_code == 202, response.text
+    volume = complete(client, response.json())
+    response = client.post(f"/api/runs/{volume['id']}/experiments", json={"kind": "parameter"})
+    assert response.status_code == 202, response.text
+    sensitivity = complete(client, response.json())["result"]
+    assert sensitivity["parameter"] == "volume_threshold"
+    assert len(sensitivity["variants"]) >= 2
+    response = client.post(f"/api/runs/{volume['id']}/experiments", json={"kind": "walk_forward", "training_days": 30, "test_days": 15})
+    assert response.status_code == 202, response.text
+    walk_forward = complete(client, response.json())["result"]
+    trials = [trial["strategy"] for fold in walk_forward["folds"] for trial in fold["trials"]]
+    assert all(trial["name"] == "dual_ma_volume" for trial in trials)
+    assert {trial["parameters"]["volume_threshold"] for trial in trials} == {1.0, 1.2, 1.5}
+
+    response = client.post("/api/runs", json={**common, "strategy": {"name": "buy_and_hold"}})
+    assert response.status_code == 202, response.text
+    control = complete(client, response.json())
+    for kind in ("parameter", "walk_forward"):
+        assert client.post(f"/api/runs/{control['id']}/experiments", json={"kind": kind}).status_code == 422
+    response = client.post(f"/api/runs/{control['id']}/experiments", json={"kind": "pressure"})
+    assert response.status_code == 202, response.text
+    assert complete(client, response.json())["result"]["baseline"] == control["result"]["metrics"]
+
+
 def test_browser_file_upload_preserves_numeric_representation(client, run):
     executable = shutil.which("node")
     if executable is None:

@@ -30,25 +30,28 @@ type ProjectContextValue = {
 }
 const ProjectContext = createContext<ProjectContextValue | null>(null)
 const storageKey = 'quantsandbox.activeProject'
+export const strategyDemoPage = 'strategy-demo'
+export const stockPage = 'stock'
 export function withProject(route: string, projectId?: string) {
   const [page, query = ''] = route.split('?')
   const params = new URLSearchParams(query)
-  if (projectId) params.set('project', projectId)
+  if (projectId && page !== strategyDemoPage) params.set('project', projectId)
   else params.delete('project')
   return page + (params.size ? '?' + params.toString() : '')
 }
 function queryProject() {
-  return new URLSearchParams(location.hash.split('?')[1] || '').get('project') || ''
+  const [page, query] = location.hash.slice(1).split('?')
+  return page === strategyDemoPage ? '' : new URLSearchParams(query || '').get('project') || ''
 }
 
-export function ProjectProvider({ children }: { children: ReactNode }) {
+export function ProjectProvider({ children, enabled = true }: { children: ReactNode; enabled?: boolean }) {
   const [projects, setProjects] = useState<Project[]>([])
   const [activeProject, setActiveProject] = useState<Project | null>(null)
   const [error, setError] = useState('')
   const activeId = useRef('')
   const selection = useRef(0)
   const mounted = useRef(true)
-  const selectProject = useCallback(async (id: string) => {
+  const loadProject = useCallback(async (id: string, fromLink = false) => {
     const generation = ++selection.current
     setError('')
     if (!id) {
@@ -60,7 +63,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
     try {
       const project = await request<Project>('/projects/' + encodeURIComponent(id))
-      if (!mounted.current || generation !== selection.current) return
+      if (!mounted.current || generation !== selection.current || (fromLink && id !== queryProject())) return
       activeId.current = project.id
       setActiveProject(project)
       setProjects((items) =>
@@ -69,14 +72,19 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           : [project, ...items],
       )
       localStorage.setItem(storageKey, project.id)
-      const next = withProject(location.hash.slice(1) || 'projects', project.id)
+      if (fromLink) return
+      const current = location.hash.slice(1)
+      // Standalone detail links remain standalone even when another project
+      // is restored from this browser's last project selection.
+      const next = (!current || current.split('?')[0] === stockPage) && !queryProject() ? current : withProject(current, project.id)
       if (location.hash.slice(1) !== next) location.hash = next
     } catch (e) {
-      if (mounted.current && generation === selection.current)
+      if (mounted.current && generation === selection.current && (!fromLink || id === queryProject()))
         setError(e instanceof Error ? e.message : '项目读取失败')
       throw e
     }
   }, [])
+  const selectProject = useCallback((id: string) => loadProject(id), [loadProject])
   const reloadProjects = useCallback(async () => {
     const list = await request<{ projects: Project[] }>('/projects')
     if (!mounted.current) return
@@ -104,14 +112,18 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     [],
   )
   useEffect(() => {
+    if (!enabled) return
     mounted.current = true
     let live = true
+    let routeProject = queryProject()
+    const startup = selection.current
     request<{ projects: Project[] }>('/projects')
       .then(async (list) => {
         if (!live) return
         setProjects(list.projects)
-        const wanted = queryProject() || localStorage.getItem(storageKey) || list.projects[0]?.id
-        if (wanted && list.projects.some((p) => p.id === wanted)) await selectProject(wanted)
+        if (startup !== selection.current || routeProject !== queryProject()) return
+        const wanted = routeProject || localStorage.getItem(storageKey) || list.projects[0]?.id
+        if (wanted && list.projects.some((p) => p.id === wanted)) await loadProject(wanted, Boolean(routeProject))
         else if (wanted) setError('指定研究项目不存在，请重新选择。')
       })
       .catch((e) => {
@@ -119,7 +131,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       })
     const hash = () => {
       const id = queryProject()
-      if (id && id !== activeId.current) selectProject(id).catch(() => {})
+      if (id === routeProject) return
+      routeProject = id
+      selection.current++
+      setError('')
+      if (id && id !== activeId.current) loadProject(id, true).catch(() => {})
     }
     window.addEventListener('hashchange', hash)
     return () => {
@@ -128,7 +144,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       selection.current++
       window.removeEventListener('hashchange', hash)
     }
-  }, [selectProject])
+  }, [enabled, loadProject])
   return (
     <ProjectContext.Provider
       value={{ activeProject, projects, selectProject, reloadProjects, linkRecord, error }}

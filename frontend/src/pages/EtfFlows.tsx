@@ -1,5 +1,7 @@
+import EtfIntraday from '../EtfIntraday'
+import EtfGettingStarted from '../EtfGettingStarted'
 import {t,useLocale} from '../i18n';
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, SlidersHorizontal, RotateCcw } from 'lucide-react'
 import { useProject } from '../workspace/ProjectContext'
 import type { PageProps } from '../App'
@@ -7,6 +9,7 @@ import { api, fmt, today, pct, type Row } from '../api'
 import { Panel, Note, Metric, Empty, LoadingButton, Source } from '../components'
 import EtfFlowChart from '../EtfFlowChart'
 import EtfEvidence from '../EtfEvidence'
+const refreshStatus: Record<string, string> = { running: '运行中', completed: '已完成', failed: '失败', interrupted: '中断', idle: '待运行', unavailable: '不可用' }
 const amount = (v: any, unit: string) =>
   v == null ? '—' : (v > 0 ? '+' : '') + fmt(v / 1e8) + ' ' + t(unit === 'flow' ? '亿元' : '亿份')
 export default function EtfFlows({ reload }: PageProps) {
@@ -29,10 +32,53 @@ export default function EtfFlows({ reload }: PageProps) {
     [onlyAbnormal, setOnlyAbnormal] = useState(false),
     [sort, setSort] = useState('delta_30'),
     [descending, setDescending] = useState(true)
+  const mounted = useRef(false)
+  const loadVersion = useRef(0)
+  const initialized = useRef(false)
+  const observedCompletedJob = useRef<string | null>(null)
+  const [schedule, setSchedule] = useState<Row | null>(null)
+  const [scheduleTime, setScheduleTime] = useState('15:30')
+  const [savingSchedule, setSavingSchedule] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const loadSchedule = async (syncTime = true) => {
+    const next = await api('/etf/refresh-settings')
+    if (!mounted.current) return
+    setSchedule(next)
+    if (syncTime) setScheduleTime(next.time)
+    if (next.status === 'completed' && next.last_job_id && next.last_job_id !== observedCompletedJob.current) {
+      observedCompletedJob.current = next.last_job_id
+      await load()
+      if (mounted.current) await reload()
+    }
+    if (next.last_job_id && next.status === 'running') {
+      const active = await api('/etf/jobs/' + next.last_job_id)
+      if (mounted.current) {
+        setJob(active)
+        if (active.status !== 'running' && active.status !== 'completed')
+          setMessage((active.error || t('任务已中断')) + ' · ' + t('刷新失败时保留已有数据。'))
+      }
+    }
+  }
+  const saveSchedule = async (enabled: boolean) => {
+    setSavingSchedule(true)
+    try {
+      const response = await fetch('/api/research/etf/refresh-settings', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled, time: scheduleTime }),
+      })
+      const next = await response.json()
+      if (!response.ok) throw new Error(next.detail || '服务暂不可用')
+      if (mounted.current) { setSchedule(next); setScheduleTime(next.time) }
+    } catch (e: any) { if (mounted.current) setMessage(e.message) }
+    finally { if (mounted.current) setSavingSchedule(false) }
+  }
   const load = async (p: Row = {}) => {
+    const version = ++loadVersion.current
     const next = await api('/etf/dashboard', p)
+    if (!mounted.current || version !== loadVersion.current) return next
     setData(next)
-    if (!data) {
+    if (!initialized.current) {
+      initialized.current = true
       setCodes((next.run?.params.codes || Object.keys(next.universe)).join(','))
       if (next.run) {
         setStart(next.run.params.start)
@@ -43,7 +89,11 @@ export default function EtfFlows({ reload }: PageProps) {
     return next
   }
   useEffect(() => {
-    load().catch((e) => setMessage(e.message))
+    mounted.current = true
+    load().catch((e) => { if (mounted.current) setMessage(e.message) })
+    loadSchedule().catch((e) => { if (mounted.current) setMessage(e.message) })
+    const scheduleTimer = setInterval(() => { void loadSchedule(false).catch(() => {}) }, 30000)
+    return () => { mounted.current = false; loadVersion.current++; clearInterval(scheduleTimer) }
   }, [])
   useEffect(() => {
     if (!job || job.status !== 'running') return
@@ -55,11 +105,14 @@ export default function EtfFlows({ reload }: PageProps) {
         setJob(next)
         if (next.status === 'completed') {
           await load()
+          if (!mounted.current) return
           await reload()
+          if (!mounted.current) return
+          void loadSchedule().catch(() => {})
           setMessage('更新完成，显示来源已发布的实际日期。')
-        } else if (next.status !== 'running') setMessage(next.error || '任务已中断')
+        } else if (next.status !== 'running') setMessage((next.error || t('任务已中断')) + ' · ' + t('刷新失败时保留已有数据。'))
       } catch (e: any) {
-        if (alive) setMessage(e.message)
+        if (alive) { setMessage(e.message); setJob({ ...job }) }
       }
     }, 1500)
     return () => {
@@ -85,15 +138,15 @@ export default function EtfFlows({ reload }: PageProps) {
       setBusy(false)
     }
   }
-  const refresh = async () => {
+  const refresh = async (history = false) => {
+    setStarting(true)
     setMessage('')
     try {
-      setJob(
-        await api('/etf/refresh', { start, end, codes: pool(), threshold: threshold / 100, force }),
-      )
+      const next = await api(history ? '/etf/refresh' : '/etf/refresh-now', history ? { start, end, codes: pool(), threshold: threshold / 100, force } : {})
+      if (mounted.current) setJob(next)
     } catch (e: any) {
-      setMessage(e.message)
-    }
+      if (mounted.current) setMessage(e.message)
+    } finally { if (mounted.current) setStarting(false) }
   }
   const tableRows = useMemo(() => {
     let rows: Row[] = result?.rows || []
@@ -143,10 +196,30 @@ export default function EtfFlows({ reload }: PageProps) {
         <div className="actions">
           <button className="secondary" onClick={() => setSettings(!settings)}>
             <SlidersHorizontal size={16} /> {t("样本与参数")}</button>
-          <LoadingButton busy={!data || !!isRunning} onClick={refresh}>
-            {t("更新数据")}</LoadingButton>
+          <LoadingButton busy={starting || !!isRunning} onClick={() => refresh()}>
+            {t("立即刷新")}</LoadingButton>
         </div>
       </div>
+      <EtfGettingStarted />
+      <EtfIntraday codes={codes} />
+      <Panel title={t("自动刷新")}>
+        <div className="controls wrap">
+          <label className="checkbox">
+            <input type="checkbox" checked={schedule?.enabled ?? false} disabled={!schedule || savingSchedule}
+              onChange={(e) => saveSchedule(e.target.checked)} /> {t("每天下午自动取数")}
+          </label>
+          <label>{t("每日取数时间（上海）")}
+            <input type="time" value={scheduleTime} disabled={!schedule || savingSchedule}
+              onChange={(e) => setScheduleTime(e.target.value)} />
+          </label>
+          <LoadingButton busy={savingSchedule} disabled={!schedule || !scheduleTime || (scheduleTime === schedule.time && !schedule.warning)}
+            onClick={() => saveSchedule(!!schedule?.enabled)}>{t("保存时间")}</LoadingButton>
+          {schedule?.next_run && <span className="muted">{t("下次计划")}: {schedule.next_run}</span>}
+        </div>
+        <p className="muted">{t("仅在本工作区服务运行时执行；立即刷新复用历史缓存，仅更新近期数据。刷新失败时保留已有数据。")}</p>
+        {schedule?.warning && <Note tone="warn">{t(schedule.warning)}</Note>}
+        {schedule?.last_attempt && <p className="muted">{t("上次尝试")}: {schedule.last_attempt} · {t(refreshStatus[schedule.status] || schedule.status || '')}</p>}
+      </Panel>
       {settings && (
         <Panel title={t("取数与计算参数")}>
           <div className="controls wrap">
@@ -170,6 +243,7 @@ export default function EtfFlows({ reload }: PageProps) {
             <label className="checkbox">
               <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />{' '}
               {t("强制刷新已有缓存")}</label>
+            <LoadingButton busy={starting || !!isRunning} onClick={() => refresh(true)}>{t("按自定义日期取数")}</LoadingButton>
             <LoadingButton busy={busy} onClick={calculate}>
               {t("按缓存重算")}</LoadingButton>
           </div>
@@ -186,7 +260,7 @@ export default function EtfFlows({ reload }: PageProps) {
           >
             <RotateCcw size={14} /> {t("恢复默认25只")}</button>
           <p className="muted">
-            {t("单次最多120个自然日；1/7/30窗口均按交易日计算。新增样本后更新数据可补取其净值。按缓存重算仅调整样本和阈值；图下拖动滑块可缩放观察区间。仅在你或Codex发起时取数。")}</p>
+            {t("单次最多120个自然日；1/7/30窗口均按交易日计算。新增样本后更新数据可补取其净值。按缓存重算仅调整样本和阈值；图下拖动滑块可缩放观察区间。自定义历史取数按此日期范围执行。")}</p>
         </Panel>
       )}
       {isRunning && (
@@ -211,6 +285,7 @@ export default function EtfFlows({ reload }: PageProps) {
               {t("样本")}{result.universe.length} {t("只 · 当日有效份额变化")}{latest.coverage}/
               {latest.expected} {t("· 同日净值")}{latest.nav_coverage}/{latest.expected}
             </span>
+            <span>{t("采集时间")}: {run.sources?.map((s: Row) => s.fetched_at).filter(Boolean).sort().at(-1) || t("未记录")}</span>
             {activeProject && (
               <button
                 className="secondary"
@@ -337,7 +412,7 @@ export default function EtfFlows({ reload }: PageProps) {
                 {t("跟踪指数")}<select value={family} onChange={(e) => setFamily(e.target.value)}>
                   <option value="全部">{t("全部")}</option>
                   {result.groups.map((g: Row) => (
-                    <option key={t(g.family)} value={t(g.family)}>{t(g.family)}</option>
+                    <option key={t(g.family)} value={g.family}>{t(g.family)}</option>
                   ))}
                 </select>
               </label>

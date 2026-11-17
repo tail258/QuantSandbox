@@ -14,11 +14,13 @@ import pandas as pd
 
 from backend.core.strategy import StrategyFactory
 from backend.core.account import ACCOUNT_DEFAULTS, normalize_account as _account, AccountLedger
+from backend.core.data_format import DIVIDEND_COLUMNS, validate_dividend_rows
 from backend.core.metrics import calculate_metrics
 from backend.core.execution import execute_order
 
-ENGINE_VERSION = "2.0.0"
-INDICATORS = ("fast_ma", "slow_ma", "middle_band", "upper_band", "lower_band", "rsi", "momentum")
+ENGINE_VERSION = "2.0.1"
+INDICATORS = ("fast_ma", "slow_ma", "middle_band", "upper_band", "lower_band", "rsi", "momentum",
+              "volume_ma", "volume_ratio", "realized_volatility", "entry_size_multiplier")
 
 
 def _number(value, default=None):
@@ -49,6 +51,7 @@ def _prepare(frame):
         raise ValueError("行情价格必须为正数，成交量不能为负数")
     if ((out.high < out[["open", "close", "low"]].max(axis=1)) | (out.low > out[["open", "close", "high"]].min(axis=1))).any():
         raise ValueError("OHLC 高低价关系不合法")
+    validate_dividend_rows(out)
     return out
 
 
@@ -67,6 +70,7 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
     strategy = config.get("strategy", {"name": "dual_ma", "parameters": {}})
     strategy = {"name": strategy.get("name", "dual_ma"), "parameters": strategy.get("parameters", strategy.get("params", {}))}
     sources = {t: _prepare(frames[t]) for t in tickers}
+    has_dividend_data = any(DIVIDEND_COLUMNS[0] in frame for frame in sources.values())
     if any(f.empty for f in sources.values()):
         raise ValueError("股票池中存在空行情")
     start = pd.Timestamp(config.get("start_date", min(f.date.min() for f in sources.values()))).normalize()
@@ -167,7 +171,11 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
         if signal < 0 and position["shares"] > 0:
             order = {"action": "sell", "target_fraction": 0.0}
         elif signal > 0 and position["shares"] == 0 and settings["position_size"] > 0:
-            order = {"action": "buy", "target_fraction": settings["position_size"]}
+            target_fraction = settings["position_size"]
+            if policy["name"] == "dual_ma_volatility":
+                # Capture the budget at signal time, including when execution is deferred.
+                target_fraction *= float(row.entry_size_multiplier)
+            order = {"action": "buy", "target_fraction": target_fraction}
         elif rebalance and position["shares"] > 0 and signal >= 0:
             order = {"action": "rebalance", "target_fraction": settings["position_size"]}
             reason = "分叉后的仓位上限在下一开盘重新配置"
@@ -191,6 +199,7 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
             decide(ticker, row.date, row, strategy, account, record=False)
 
     for day in dates:
+        date_text = _date(day)
         available = {t: lookup[t].loc[day] for t in tickers if day in lookup[t].index}
         due = []
         for ticker in tickers:
@@ -236,7 +245,12 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
         for ticker, row in available.items():
             last_close[ticker] = float(row.close)
             benchmark_entry.setdefault(ticker, float(row.open))
+            if has_dividend_data and pd.notna(row.get("cash_dividend_per_share")):
+                ledger.record_dividend(ticker, date_text, row)
+        dividend_state = ledger.settle_dividends(date_text) if has_dividend_data else {}
         equity = ledger.cash + sum(p["shares"] * last_close[t] for t, p in positions.items())
+        if has_dividend_data:
+            equity += dividend_state["dividend_receivables"]
         peak = max(peak, equity)
         snapshot_positions = {t: {"shares": p["shares"], "cost_basis": round(p["cost_basis"], 6),
                                   "market_value": round(p["shares"] * last_close[t], 6),
@@ -245,7 +259,8 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
         benchmark = initial / len(tickers) * sum(last_close[t] / benchmark_entry[t] if t in benchmark_entry else 1 for t in tickers)
         series.append({"date": _date(day), "equity": round(equity, 6), "cash": round(ledger.cash, 6),
                        "drawdown": round((equity / peak - 1) * 100, 6), "benchmark": round(benchmark, 6),
-                       "daily_return": round((equity / previous_equity - 1) * 100, 6), "positions": snapshot_positions})
+                       "daily_return": round((equity / previous_equity - 1) * 100, 6), "positions": snapshot_positions,
+                       **dividend_state})
         eligible = [item for item in transitions if item["date"] <= day]
         transition = eligible[-1] if eligible else None
         policy = transition["strategy"] if transition else strategy
@@ -257,7 +272,8 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
             row = transition["lookup"][ticker].loc[day] if transition else available[ticker]
             decide(ticker, day, row, policy, settings, rebalance=bool(changing and transition["rebalance"]))
         checkpoints.append({"date": _date(day), "cash": round(ledger.cash, 6), "equity": round(equity, 6),
-                            "positions": deepcopy(snapshot_positions), "pending_orders": deepcopy(list(pending.values()))})
+                            "positions": deepcopy(snapshot_positions), "pending_orders": deepcopy(list(pending.values())),
+                            **dividend_state})
         previous_equity = equity
     bars = {}
     for ticker in tickers:
@@ -273,14 +289,18 @@ def run_backtest(frames: dict[str, pd.DataFrame], config: dict, branch: dict | N
         bars[ticker] = rows
     return {"engine_version": ENGINE_VERSION, "config": config, "metrics": calculate_metrics(series, trades, initial),
             "series": series, "bars": bars, "trades": trades, "decisions": decisions, "checkpoints": checkpoints,
+            **({"dividends": ledger.dividends} if has_dividend_data else {}),
             "assumptions": ["收盘观察信号，最早在下一根可交易日线开盘成交；无日内路径假设。",
                             "共享现金、只做多、默认整手 100 股及 T+1；不同板块规则需另行配置。",
-                            "按固定滑点及佣金模型撮合；成交量为零和显式涨跌停价会阻止成交。未提供涨跌停价时不推断限制。",
+                            "按固定滑点及佣金模型撮合；停牌、零成交量、开盘触及委托方向限价或滑点后越过已知限价时，委托顺延。未提供涨跌停价时不推断限制。",
                             "已排队委托持续等待成交，不因后续信号自动撤单；分叉时以新策略重新生成尚未执行的委托。",
                             "仓位参数是每次入场的单标的资金预算；除分叉调整外不每日再平衡。",
                             "股票依代码排序分配可用资金，先处理卖出。期末不强制平仓。",
                             "基准为等权买入并持有、允许碎股、不计费用；缺失行情以最近已知收盘价估值。",
-                            "结果使用输入快照价格；复权行情不等同真实现金账本，未模拟公司行动和价格冲击。",
+                            *(["按快照的股权登记日收盘持股确认税前现金红利；除息日计入应收，派息日在开盘撮合后转为现金。非模拟交易日事件顺延到首个有行情的模拟日。",
+                               "指标及撮合使用快照的未复权价格；内置满仓基准仍仅计算价格收益。账本未模拟股息红利税、其他公司行动和价格冲击。"]
+                              if has_dividend_data else
+                              ["结果使用输入快照价格；复权行情不等同真实现金账本，未模拟公司行动和价格冲击。"]),
                             "历史分叉从起点确定性重放，检查点用于审计和展示；尚未直接从检查点恢复状态。",
                             "历史分叉沿用固定行情，不会模拟交易改变市场价格；分叉当日收盘的新指标用于随后订单。"]}
 

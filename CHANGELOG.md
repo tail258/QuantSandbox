@@ -7,6 +7,10 @@ This file records user-visible changes. Source releases identify the exact commi
 ### Added
 
 - Initial English/Chinese US company research for McDonald’s (MCD): explicit SEC annual-data refresh, cached filing references, source-attributed USD unadjusted OHLCV imports, and project-linked local evidence. US data remains outside the A-share backtest engine.
+- The Projects home page links to a bilingual offline strategy demo. Compare two moving-average settings on the same synthetic snapshot, inspect costs and simulated fills, and replay the original evidence without adding records to the research workspace.
+- Daily strategy comparisons can now use dual moving averages with volume confirmation or volatility-based entry sizing, plus a buy-and-hold control that uses the configured budget and trading costs.
+- Sourced daily snapshots can include suspension, price limits and issuer cash dividend evidence. Replay covers gross cash dividends and receivables. A local paper account can advance one verified trading session at a time from a saved after-close plan.
+- Daily Chan research recognizes directional bar inclusion, fractals, strokes, characteristic-sequence segments and centers from a fixed local snapshot. Inspect confirmation and revision by date, use an isolated example, or download and independently verify replay evidence.
 
 ## 3.2.0 — 2026-11-05
 

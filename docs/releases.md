@@ -62,3 +62,20 @@ Update all version metadata together, run the full checks and offline reproducti
 The `Source release` GitHub Actions workflow runs on `v*` tags. It validates the tag against the checked-out commit, checks all version metadata, builds the source assets twice, verifies checksums, runs backend tests and the offline reproduction, and tests/builds the frontend. A separate job receives repository write permission only after every gate passes. It creates the GitHub release and uploads the three validated assets, or adds them to an existing release without replacing existing files. A retry with duplicate asset names fails instead of silently overwriting published evidence.
 
 The regular `Checks` workflow additionally exercises backend tests on Windows and Linux. Release automation builds and tests on Linux. The downloadable asset is a source distribution; users install the locked dependencies and build for their own machine.
+
+## Local preview before committing
+
+A local preview makes the current reviewed working tree available for clean-install acceptance before committing. It is **not an official release**. Use `python scripts/prepare_preview.py --help` for the exact supported options, then generate into a new local output directory. Keep previews and their manifests local; do not upload personal data or acceptance artifacts to GitHub.
+
+```powershell
+python scripts/prepare_preview.py --output .local/release-preview
+python scripts/prepare_preview.py --verify .local/release-preview
+```
+
+The output contains `QuantSandbox-local-preview-source.zip`, `preview-manifest.json` and `SHA256SUMS`. Generate into a new or empty directory. Verification checks the asset checksums and compares included files with the current working tree; subsequent source changes require a new preview and acceptance record. Installed dependencies, build output and acceptance logs never become preview inputs.
+
+The preview uses a source allowlist and records the base HEAD plus content hashes for included working-tree files, including local changes. Its manifest identifies what was actually tested. Inspect the member list before extracting it into a new empty directory, install dependencies there, and follow the [readiness checklist](release-readiness.md). Acceptance of a preview applies only to those recorded contents.
+
+Official `package_release.py` continues to read committed Git blobs from the selected tag. Uncommitted changes never enter an official package. After review, official release checks must run against the final committed source and matching tag; a passing preview does not publish or certify that tag.
+
+本地预览用于在提交前对当前工作树做干净安装验收，**不是正式发行**。用 `python scripts/prepare_preview.py --help` 查看实际参数，在新的本机目录生成；允许列表与 manifest 记录基础 HEAD 及纳入文件的实际内容哈希。先检查包内容，再解压安装；验收结论仅对应这些内容。正式 `package_release.py` 仍只读取选定标签的已提交 Git blob，未提交修改不会进入正式源码包。预览、个人数据及验收产物均留在本机。真实交易日待验项见[清单](release-readiness.zh-CN.md)。

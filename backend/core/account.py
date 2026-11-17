@@ -37,6 +37,41 @@ class AccountLedger:
     def __init__(self, initial_cash, tickers):
         self.cash = float(initial_cash)
         self.positions = {t: {"shares": 0, "cost_basis": 0.0, "entry_date": None, "cycle_pnl": 0.0} for t in tickers}
+        self.dividends = []
+
+    def record_dividend(self, ticker, record_date, row):
+        """Capture record-close eligibility independent of subsequent trading."""
+        shares = self.positions[ticker]["shares"]
+        if shares == 0:
+            return
+        cash_per_share = float(row.cash_dividend_per_share)
+        self.dividends.append({
+            "ticker": ticker,
+            "record_date": record_date,
+            "ex_date": row.dividend_ex_date,
+            "payment_date": row.dividend_payment_date,
+            "shares": shares,
+            "cash_per_share": cash_per_share,
+            "gross_amount": round(shares * cash_per_share, 6),
+            "recognized_date": None,
+            "credited_date": None,
+        })
+
+    def settle_dividends(self, date):
+        """Value ex-date receivables and release cash only after the session's open."""
+        new_cash = receivables = 0.0
+        for dividend in self.dividends:
+            if dividend["credited_date"] or date < dividend["ex_date"]:
+                continue
+            if dividend["recognized_date"] is None:
+                dividend["recognized_date"] = date
+            if date >= dividend["payment_date"]:
+                dividend["credited_date"] = date
+                new_cash += dividend["gross_amount"]
+            else:
+                receivables += dividend["gross_amount"]
+        self.cash += new_cash
+        return {"dividend_cash_paid": round(new_cash, 6), "dividend_receivables": round(receivables, 6)}
 
     def buy(self, ticker, day, qty, price, settings):
         position = self.positions[ticker]

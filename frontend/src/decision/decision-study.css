@@ -1,0 +1,36 @@
+.decision-study {
+  min-width: 0;
+  padding: .85rem .9rem;
+  border: 1px solid var(--stock-border, var(--border));
+  border-radius: .6rem;
+  background: var(--stock-surface, var(--surface));
+  color: var(--stock-ink, inherit);
+  font-size: .86rem;
+  line-height: 1.5;
+}
+.decision-study > summary, .decision-study-exclusions > summary { cursor: pointer; font-weight: 650; }
+.decision-study > p, .decision-study-method { color: var(--stock-subtle); }
+.decision-study p { margin: .52rem 0; }
+.decision-study p:last-child { margin-bottom: 0; }
+.decision-study .decision-study-error { color: var(--stock-alert); }
+.decision-study button { font-size: .85rem; }
+.decision-study-result { font-variant-numeric: tabular-nums; }
+.decision-study-window { display: flex; flex-wrap: wrap; gap: .25rem .5rem; }
+.decision-study-counts { display: flex; flex-wrap: wrap; gap: .3rem 1.3rem; margin: .55rem 0; }
+.decision-study-counts > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: .38rem; }
+.decision-study-counts dt { color: var(--stock-subtle); }
+.decision-study dl dd { margin: 0; }
+.decision-study-counts dd { font-weight: 650; }
+.decision-study-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .55rem; margin: .7rem 0; }
+.decision-study-groups > section { min-width: 0; padding: .68rem; border: 1px solid var(--stock-border); border-radius: .45rem; }
+.decision-study-groups h3 { margin: 0; font-size: .92rem; }
+.decision-study-groups dl { margin: 0; }
+.decision-study-cohort { margin-top: .42rem; padding-top: .42rem; border-top: 1px solid var(--stock-border); }
+.decision-study-cohort dt { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .15rem .4rem; }
+.decision-study-cohort dt span, .decision-study-cohort dd { color: var(--stock-subtle); }
+.decision-study-cohort dd span { display: block; }
+.decision-study-cohort dd strong { color: var(--stock-ink); }
+.decision-study-exclusions { margin: .3rem 0 0; color: var(--stock-subtle); }
+.decision-study-exclusions ul { margin: .3rem 0; padding-inline-start: 1.15rem; }
+.decision-study-exclusions strong { color: var(--stock-ink); margin-inline-start: .25rem; }
+.decision-study-method { padding-top: .2rem; border-top: 1px solid var(--stock-border); }

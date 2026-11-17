@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import math
 import pandas as pd
-from backend.core.strategy_catalog import DEFAULTS, NAME_ALIASES, canonical_name, normalize_parameters, strategy_defaults
+from backend.core.strategy_catalog import (DEFAULTS, NAME_ALIASES, VOLATILITY_MULTIPLIER_MIN, VOLATILITY_THRESHOLD_MIN,
+                                           VOLUME_THRESHOLD_MAX, VOLUME_THRESHOLD_MIN,
+                                           canonical_name, normalize_parameters, strategy_defaults)
 
 
 class StrategyFactory:
@@ -38,6 +40,53 @@ class StrategyFactory:
         ready = df["slow_ma"].notna()
         df.loc[ready & (df.fast_ma > df.slow_ma), "trade_signal"] = 1
         df.loc[ready & (df.fast_ma <= df.slow_ma), "trade_signal"] = -1
+        return df
+
+    @staticmethod
+    def _dual_ma_volume(df, params):
+        defaults = DEFAULTS["dual_ma_volume"]
+        window = StrategyFactory._period(params, "volume_window", defaults["volume_window"])
+        threshold = float(params.get("volume_threshold", defaults["volume_threshold"]))
+        if not VOLUME_THRESHOLD_MIN <= threshold <= VOLUME_THRESHOLD_MAX:
+            raise ValueError(f"成交量倍数阈值必须在 [{VOLUME_THRESHOLD_MIN}, {VOLUME_THRESHOLD_MAX}] 内")
+
+        df = StrategyFactory._dual_ma(df, params)
+        volume = pd.to_numeric(df.get("volume", pd.Series(index=df.index, dtype=float)), errors="coerce").astype(float)
+        eligible = volume.gt(0) & volume.lt(math.inf)
+        if "is_suspended" in df:
+            eligible &= ~df["is_suspended"].eq(True).fillna(False)
+        observed = volume[eligible]
+        # Roll over observed volume bars only. Shift before rolling to exclude the signal bar.
+        mean = observed.shift().rolling(window).mean()
+        mean = mean.where(mean.gt(0) & mean.lt(math.inf))
+        ratio = observed / mean
+        df["volume_ma"] = mean
+        df["volume_ratio"] = ratio.where(ratio.lt(math.inf))
+        df.loc[df.trade_signal.gt(0) & ~df.volume_ratio.ge(threshold), "trade_signal"] = 0
+        return df
+
+    @staticmethod
+    def _dual_ma_volatility(df, params):
+        defaults = DEFAULTS["dual_ma_volatility"]
+        window = StrategyFactory._period(params, "volatility_window", defaults["volatility_window"])
+        threshold = float(params["volatility_threshold"])
+        multiplier = float(params["high_volatility_multiplier"])
+        if not VOLATILITY_THRESHOLD_MIN <= threshold <= 1:
+            raise ValueError(f"日波动率阈值必须在 [{VOLATILITY_THRESHOLD_MIN}, 1] 内")
+        if not VOLATILITY_MULTIPLIER_MIN <= multiplier <= 1:
+            raise ValueError(f"高波动入场预算倍率必须在 [{VOLATILITY_MULTIPLIER_MIN}, 1] 内")
+
+        df = StrategyFactory._dual_ma(df, params)
+        volatility = df.close.pct_change(fill_method=None).rolling(window).std(ddof=1)
+        ready = volatility.notna()
+        df["realized_volatility"] = volatility
+        df["entry_size_multiplier"] = pd.Series(1.0, index=df.index).mask(volatility.gt(threshold), multiplier).where(ready)
+        df.loc[df.trade_signal.gt(0) & ~ready, "trade_signal"] = 0
+        return df
+
+    @staticmethod
+    def _buy_and_hold(df, params):
+        df["trade_signal"] = 1
         return df
 
     @staticmethod

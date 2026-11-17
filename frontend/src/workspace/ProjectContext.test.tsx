@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useRef } from 'react'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProjectProvider, useProject, withProject, type Project } from './ProjectContext'
@@ -102,5 +102,24 @@ describe('shared project workspace', () => {
     expect(withProject('obsidian?kind=research&run=abc', 'alpha')).toBe(
       'obsidian?kind=research&run=abc&project=alpha',
     )
+    expect(withProject('strategy-demo?project=beta', 'alpha')).toBe('strategy-demo')
+  })
+  it('does not rewrite a stock link after Back cancels a pending project selection', async () => {
+    const initialFetch = window.fetch
+    let finish!: (response: unknown) => void
+    vi.stubGlobal('fetch', vi.fn((input, init) => String(input) === '/api/projects/beta'
+      ? new Promise(resolve => { finish = resolve }) : initialFetch(input, init)))
+    render(<ProjectProvider><Consumer /></ProjectProvider>)
+    await screen.findByText('Alpha')
+    const navigate = (hash: string) => act(() => {
+      history.replaceState(null, '', hash)
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    navigate('#stock?symbol=000338&project=beta')
+    expect(finish).toBeTypeOf('function')
+    navigate('#stock?symbol=600519&project=alpha')
+    await act(() => finish({ ok: true, status: 200, text: async () => JSON.stringify(projects[1]) }))
+    expect(screen.getByLabelText('current').textContent).toBe('Alpha')
+    expect(location.hash).toBe('#stock?symbol=600519&project=alpha')
   })
 })

@@ -1,4 +1,47 @@
 export const marketMessages: Record<string,string> = {
+  '刷新设置损坏；自动刷新已暂停，请重新保存设置':'Refresh settings are damaged. Automatic refresh is paused; save the settings again.',
+  '隔夜或缺失报价在工作日交易时段每5分钟尝试恢复；工作日不代表交易所开市，未获新来源前保留陈旧状态。周末与隐藏页面暂停。':'Overnight or missing quotes retry every five minutes during weekday session hours. Weekdays do not confirm an exchange session; quotes remain stale until a new source arrives. Paused on weekends and hidden pages.',
+  'ETF使用引导':'ETF getting started',
+  '收起引导':'Collapse guide',
+  '打开引导':'Open guide',
+  '先选研究项目，再核对证券与来源日期。首次使用可先查看离线合成演示。':'Choose a research project, then check securities and source dates. Start with the offline synthetic demo if you are new here.',
+  '刷新轻量行情：获取报价与累计成交额；保留来源精度和时间。':'Refresh lightweight quotes: fetch prices and cumulative turnover, retaining source precision and timestamps.',
+  '更新历史基准：单独获取5分钟数据，以完整时点比较此前20日；检查有效样本与缺口。':'Update historical baseline: fetch five-minute bars separately to compare completed intervals with the previous 20 dates. Check eligible samples and gaps.',
+  '立即刷新与每日15:30：更新日频份额和净值，用于估算申赎；不等同于盘中成交额。':'Refresh now and the daily 15:30 schedule: update daily shares and NAV for estimated creations/redemptions, a separate measure from intraday turnover.',
+  '自动取数仅在本地服务运行时执行。缺失值保留为空，成交与申赎不能归因具体机构。':'Automatic fetching requires the local service to be running. Missing values stay missing; turnover and creations/redemptions cannot identify specific institutions.',
+  '关闭合成演示':'Close synthetic demo',
+  '正在加载演示':'Loading demo',
+  '查看合成演示':'View synthetic demo',
+  '合成演示':'Synthetic demo',
+  '合成演示 · 人工数据':'Synthetic demo · artificial data',
+  '固定演示时钟与人工工作日日历，不代表真实行情或真实交易日。仅在内存计算，不联网，不写入缓存、项目或笔记。':'A fixed demo clock and artificial weekday calendar, representing neither real prices nor verified trading sessions. Computed in memory without network access or writes to caches, projects or notes.',
+  '演示时钟':'Demo clock',
+  '演示价格':'Demo price',
+  '演示解读：1.50表示完整时点成交额为此前20个人工日期均值的1.5倍，不代表净流入。':'Reading the demo: 1.50 means completed-interval turnover is 1.5 times the mean of the previous 20 artificial dates. It does not indicate net inflows.',
+  '合成输入与复算证据':'Synthetic inputs and reproduction evidence',
+  '条人工5分钟记录':'artificial five-minute records',
+  "待运行": "Idle",
+  "中断": "Interrupted",
+  "已完成": "Completed",
+  "运行中": "Running",
+  "立即刷新": "Refresh now",
+  "自动刷新": "Automatic refresh",
+  "每天下午自动取数": "Fetch automatically every afternoon",
+  "每日取数时间（上海）": "Daily fetch time (Shanghai)",
+  "保存时间": "Save time",
+  "下次计划": "Next scheduled run",
+  "上次尝试": "Last attempt",
+  "采集时间": "Fetched at",
+  "未记录": "Not recorded",
+  "按自定义日期取数": "Fetch custom date range",
+  "刷新失败时保留已有数据。": "Existing data is preserved when a refresh fails.",
+  "仅在本工作区服务运行时执行；立即刷新复用历史缓存，仅更新近期数据。刷新失败时保留已有数据。": "Runs only while this workspace service is running. Refresh now reuses historical cache and updates recent data. Existing data is preserved when a refresh fails.",
+  "单次最多120个自然日；1/7/30窗口均按交易日计算。新增样本后更新数据可补取其净值。按缓存重算仅调整样本和阈值；图下拖动滑块可缩放观察区间。自定义历史取数按此日期范围执行。": "Up to 120 calendar days per request. The 1/7/30 windows use trading days. Fetching adds NAVs for new ETFs. Cached recalculation changes only the universe and threshold. Drag the slider to zoom. Custom history uses this date range.",
+  "running": "Running",
+  "completed": "Completed",
+  "failed": "Failed",
+  "interrupted": "Interrupted",
+
   "亿": "100 million",
   "元": "CNY",
   "份": "shares",
@@ -409,3 +452,8 @@ export const marketMessages: Record<string,string> = {
   "持仓按原文报告期与公告日记录；日频ETF份额、申赎估算与融资为市场代理。历史分位只使用此前交易日，不含当日或未来值；显示有效样本数。": "Holdings retain source report periods and disclosure dates. Daily ETF shares, flow estimates and financing are market proxies. Historical percentiles use preceding trading days only, excluding current and future values, with valid sample counts shown.",
   "份额变化=S(t)−S(t−k)，窗口按指数交易日历；金额为逐日Δ份额×同日单位净值之和。缺失不填零；窗口资金估算需每日齐全。份额大幅变化需核对拆分/合并，不能据此识别投资者。沪深来源统计时点可能不同。": "Share change = S(t)−S(t−k), using the index trading calendar. Value estimates sum daily share changes × same-day unit NAV. Missing values stay missing; window estimates require complete daily data. Large share changes require split/consolidation checks and do not identify investors. Shanghai and Shenzhen source timing may differ."
 }
+Object.assign(marketMessages, {'ETF盘中行情与同时点成交额':'ETF intraday quotes and same-time turnover','刷新轻量行情':'Refresh lightweight quotes','更新历史基准':'Update historical baseline','盘中自动更新设置':'Intraday refresh settings','交易时段每20秒更新':'Refresh every 20 seconds during trading','仅来源时间有效且页面可见时轮询；午休与盘后暂停。历史基准单独更新。':'Poll only with a valid source session and visible page; pause at lunch and after close. Historical baselines refresh separately.','历史与行情任务':'Quote and history job','更新失败，保留旧数据（已陈旧）':'Refresh failed; previous data retained (stale)','累计成交额（元）':'Cumulative turnover (CNY)','来源时间':'Source time','时效':'Freshness','完整5分钟时点':'Complete 5-minute boundary','本日同时点成交额（元）':'Current same-time turnover (CNY)','历史均额（元）':'Historical mean (CNY)','成交额比':'Turnover ratio','有效样本 / 20':'Valid samples / 20','缺口':'Gaps','已陈旧':'Stale','累计报价与完整5分钟成交额分别展示；成交额比较不代表申赎或任何机构交易。':'Quote totals and complete 5-minute turnover are shown separately. Turnover comparisons do not identify creations, redemptions, or institutional trades.','complete':'Complete','provisional':'Provisional','insufficient':'Insufficient','unavailable':'Unavailable','pending':'Pending','running':'Running','completed':'Completed','failed':'Failed'})
+Object.assign(marketMessages,{'盘中视图':'Intraday views','同时点比较':'Same-time comparison','轻量行情':'Lightweight quotes','腾讯提供报价累计额；东方财富提供本日及历史5分钟成交额。来源口径可能存在差异。':'Tencent supplies cumulative quotes; Eastmoney supplies current and historical 5-minute turnover. Source methodologies may differ.','样本、缺口与来源证据':'Samples, gaps and source evidence','价格口径':'Price basis','历史窗口':'Historical window','此前20个交易日':'Previous 20 trading sessions','报价来源':'Quote source','5分钟来源':'5-minute source','queued':'Queued','current':'Current','stale':'Stale','closed_same_day':'Same-day close','unverified':'Unverified calendar','verified_index_sessions':'Verified index sessions','observed_source_sessions_only':'Observed source sessions only','incomplete_or_duplicate_bars':'Incomplete or duplicate bars'})
+Object.assign(marketMessages,{'after_close_snapshot':'After-close snapshot','completed_with_errors':'Completed with errors','interrupted':'Interrupted'})
+Object.assign(marketMessages,{'排队中':'Queued','完成但有错误':'Completed with errors','当前':'Current','盘后快照':'After-close snapshot','完整':'Complete','暂定':'Provisional','样本不足':'Insufficient samples','不可用':'Unavailable','日历未核验':'Unverified calendar','指数交易日已核验':'Verified index sessions','仅观测到的来源日期':'Observed source sessions only','分钟数据不完整或重复':'Incomplete or duplicate bars'})
+Object.assign(marketMessages,{'指数日历覆盖':'Index calendar covered','此前20个指数日历日期':'Previous 20 index-calendar dates','此前20个来源日期（日历未核验）':'Previous 20 source dates (calendar unverified)','实际有效样本日期':'Actual valid sample dates'})

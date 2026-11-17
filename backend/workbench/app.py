@@ -29,6 +29,16 @@ def status():return service.status()
 def health():return {'ok':True,'app':'QuantSandbox','version':store.VERSION}
 @router.post('/fetch')
 def fetch(p:dict):return service.retrieve(p)
+@router.post('/execution-history', status_code=201)
+def execution_history(p: dict):
+    from pydantic import ValidationError
+    from .execution_history import ExecutionHistory, import_execution_history
+    try:
+        history = ExecutionHistory.model_validate(p)
+    except ValidationError as exc:
+        raise ValueError(str(exc)) from exc
+    saved = import_execution_history(history)
+    return {key: value for key, value in saved.items() if key != 'rows'}
 @router.get('/series/{sid}')
 def series(sid:str):return service.get_series(sid)
 @router.get('/snapshot/{sid}')
@@ -62,6 +72,26 @@ def etf_refresh(p:dict):return etf.start_job(p)
 def etf_job(jid:str):return etf.get_job(jid)
 @router.post('/etf/dashboard')
 def etf_dashboard(p:dict):return etf.dashboard(p.get('run_id'),p.get('codes'),float(p.get('threshold',.03)),p.get('asof'))
+@router.get('/etf/intraday')
+def etf_intraday_dashboard(codes:str=''):
+    from . import etf_intraday
+    return etf_intraday.dashboard(codes.split(',') if codes else None)
+
+@router.get('/etf/intraday-demo')
+def etf_intraday_demo():
+    from .etf_demo import create_demo
+    return create_demo()
+
+@router.post('/etf/intraday/refresh')
+def etf_intraday_refresh(p:dict):
+    from . import etf_intraday
+    return etf_intraday.start_job(p)
+
+@router.get('/etf/intraday/jobs/{jid}')
+def etf_intraday_job(jid:str):
+    from . import etf_intraday
+    return etf_intraday.get_job(jid)
+
 @router.get('/etf/holders/{code}')
 def etf_holders(code:str,force:bool=False):return etf.holder_data(code,force)
 @router.get('/etf/evidence')
@@ -75,5 +105,23 @@ def national_dashboard(p:dict):return national.dashboard(p)
 def national_refresh(p:dict):return national.start_job(p)
 @router.get('/national/jobs/{jid}')
 def national_job(jid:str):return etf.get_job(jid)
+
+
+
+
+@router.get('/etf/refresh-settings')
+def etf_refresh_settings():
+    from . import etf_schedule
+    return etf_schedule.settings()
+
+@router.patch('/etf/refresh-settings')
+def etf_update_refresh_settings(p:dict):
+    from . import etf_schedule
+    return etf_schedule.settings(p)
+
+@router.post('/etf/refresh-now')
+def etf_refresh_now():
+    from . import etf_schedule
+    return etf_schedule.refresh_now()
 
 app.include_router(router)

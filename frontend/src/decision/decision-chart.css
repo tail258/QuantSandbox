@@ -1,0 +1,131 @@
+.decision-chart {
+  --decision-grid: #e5e9f1;
+  --decision-border: #d8dfec;
+  --decision-fractal: #5940d8;
+  --decision-stroke: #4f40d4;
+  --decision-segment: #2463ac;
+  --decision-center: #7b5bce;
+  --decision-merged: #7d8797;
+  --decision-support: #a6520f;
+  --decision-resistance: #7040b7;
+  --decision-target: #216987;
+  --decision-close: #ad3536;
+  --decision-up: #c94447;
+  --decision-down: #21805b;
+  margin: 0;
+  min-width: 0;
+  color: var(--theme-text, #192b37);
+}
+[data-theme="terminal"] .decision-chart {
+  --decision-grid: #252c37;
+  --decision-border: var(--border);
+  --decision-fractal: #ab98ff;
+  --decision-stroke: #a09aff;
+  --decision-segment: #73b5fa;
+  --decision-center: #a994ed;
+  --decision-merged: #9da8bc;
+  --decision-support: #efae62;
+  --decision-resistance: #c3a2fa;
+  --decision-target: #79c1df;
+  --decision-close: #f3888a;
+  --decision-up: #f17878;
+  --decision-down: #48af82;
+}
+.decision-chart-toolbar,
+.decision-chart-window,
+.decision-chart-layers,
+.decision-ohlcv,
+.decision-chart-key,
+.decision-chart-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 13px;
+}
+.decision-chart-toolbar { justify-content: space-between; margin-bottom: 8px; }
+.decision-chart-toolbar strong { font-size: 14px; font-weight: 650; }
+.decision-chart-window { gap: 4px 10px; }
+.decision-chart-window label { flex-direction: row; align-items: center; gap: 7px; }
+.decision-chart-window select { min-width: 0; min-height: 29px; padding: 3px 6px; }
+.decision-chart-layers { padding: 0; margin: 0 0 10px; border: 0; min-width: 0; }
+.decision-chart-layers label { flex-direction: row; align-items: center; gap: 5px; color: inherit; cursor: pointer; }
+.decision-chart-layers input { margin: 0; }
+.decision-layer-swatch { display: inline-block; width: 12px; height: 2px; background: currentColor; }
+.decision-layer-swatch.fractals { width: 9px; height: 8px; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.decision-layer-swatch.centers { height: 8px; border: 1px solid currentColor; background: transparent; }
+.decision-layer-swatch.merged_bars { height: 8px; border: 1px dashed currentColor; background: transparent; }
+.decision-ohlcv {
+  min-height: 28px;
+  margin: 0 0 4px;
+  color: var(--theme-muted, #526178);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  gap: 3px 12px;
+}
+.decision-ohlcv time, .decision-ohlcv b { color: var(--theme-text, #192b37); font-weight: 600; }
+.decision-chart-canvas { min-width: 0; background: var(--theme-surface, #fff); }
+.decision-chart-canvas svg { display: block; width: 100%; height: clamp(320px, 34vw, 414px); touch-action: pan-y; }
+.decision-chart-canvas svg text { font-variant-numeric: tabular-nums; }
+.decision-chart-grid { pointer-events: none; }
+.decision-chart-grid line { stroke: var(--decision-grid); }
+.decision-chart-grid .decision-axis { stroke: var(--decision-border); }
+.decision-chart-grid text { fill: var(--theme-muted, #566177); font-size: 11px; }
+.decision-candle { fill: currentColor; stroke: currentColor; pointer-events: none; }
+.decision-candle.rising { color: var(--decision-up); }
+.decision-candle.falling { color: var(--decision-down); }
+.decision-candle rect { stroke-width: .6; }
+.decision-candle .decision-volume-bar { stroke: none; opacity: .76; }
+.decision-marker { cursor: pointer; outline: none; }
+.decision-marker .decision-shape { fill: none; stroke: currentColor; stroke-width: 1.45; vector-effect: non-scaling-stroke; }
+.decision-marker .decision-marker-hit { fill: transparent; stroke: transparent; stroke-width: 14; vector-effect: non-scaling-stroke; }
+.decision-marker .decision-block { fill: currentColor; fill-opacity: .12; stroke-opacity: .6; }
+.decision-marker .decision-fractal { fill: currentColor; stroke-width: 1.25; }
+.decision-marker.candidate .decision-shape { stroke-dasharray: 4 3; }
+.decision-marker.candidate .decision-fractal { fill: var(--theme-surface, #fff); stroke-dasharray: none; }
+.decision-marker:focus-visible .decision-shape,
+.decision-marker:hover .decision-shape,
+.decision-marker[aria-pressed="true"] .decision-shape { stroke-width: 2.7; stroke-opacity: 1; }
+.decision-marker:focus-visible .decision-price-label,
+.decision-marker:hover .decision-price-label { stroke: var(--theme-text, #192b37); stroke-width: 2; }
+.decision-marker-text { fill: var(--theme-text, #192b37); font-weight: 650; font-size: 11px; pointer-events: none; }
+.decision-chart .fractals { color: var(--decision-fractal); }
+.decision-chart .strokes { color: var(--decision-stroke); }
+.decision-chart .segments { color: var(--decision-segment); }
+.decision-chart .centers { color: var(--decision-center); }
+.decision-chart .merged_bars { color: var(--decision-merged); }
+.decision-chart .support { color: var(--decision-support); }
+.decision-chart .resistance { color: var(--decision-resistance); }
+.decision-chart .reference_target { color: var(--decision-target); }
+.decision-price-connector { stroke: currentColor; pointer-events: none; }
+.decision-price-label { fill: currentColor; }
+.decision-price-label-text { fill: white; font-size: 10.5px; font-weight: 650; pointer-events: none; }
+[data-theme="terminal"] .decision-price-label-text { fill: #181c25; }
+.decision-last-price { color: var(--decision-close); pointer-events: none; }
+.decision-last-price > line:first-child { stroke: currentColor; stroke-dasharray: 2 4; opacity: .72; }
+.decision-crosshair, .decision-anchor line { stroke: var(--theme-muted, #526178); stroke-dasharray: 2 4; opacity: .68; }
+.decision-crosshair, .decision-anchor { pointer-events: none; }
+.decision-anchor { color: var(--decision-fractal); }
+.decision-anchor circle { stroke: currentColor; stroke-width: 2; fill: var(--theme-surface, #fff); fill-opacity: .5; }
+.decision-chart-key { margin-top: 4px; color: var(--theme-muted, #526178); font-size: 11px; }
+.decision-level-key { display: inline-flex; align-items: center; gap: 4px; }
+.decision-level-key i { width: 11px; border-top: 2px solid currentColor; }
+.decision-chart-detail {
+  min-height: 38px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--theme-elevated, #f4f5fa);
+  border: 1px solid var(--decision-border);
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--theme-muted, #526178);
+}
+.decision-chart-detail time, .decision-chart-detail strong { color: var(--theme-text, #192b37); }
+.decision-evidence-status { color: var(--decision-fractal); font-weight: 550; }
+.decision-evidence-status.candidate { color: var(--decision-support); }
+.decision-chart-empty { color: var(--theme-muted, #526178); }
+@media (max-width: 580px) {
+  .decision-chart-toolbar strong { width: 100%; }
+  .decision-chart-layers { gap: 4px 11px; }
+  .decision-chart-grid text { font-size: 10px; }
+}
+.decision-observation .decision-shape { fill: var(--stock-accent); stroke: var(--stock-surface); stroke-width: 1.5; }

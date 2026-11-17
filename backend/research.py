@@ -6,6 +6,7 @@ from collections.abc import Callable
 import pandas as pd
 
 from backend.core.engine import ACCOUNT_DEFAULTS, calculate_metrics, run_backtest
+from backend.core.strategy_catalog import strategy_defaults
 
 __all__ = ["run_backtest", "calculate_metrics", "run_stress_suite", "run_walk_forward", "run_parameter_suite"]
 
@@ -64,6 +65,16 @@ def _candidates(config):
     original = strategy.get("parameters", {})
     if name in ("dual_ma", "sma_cross"):
         params = [{"fast_period": 3, "slow_period": 10}, {"fast_period": 5, "slow_period": 20}, {"fast_period": 10, "slow_period": 30}]
+    elif name == "dual_ma_volume":
+        original = {**strategy_defaults(name), **original}
+        params = [{**original, "volume_threshold": threshold} for threshold in (1.0, 1.2, 1.5)
+                  if threshold != original["volume_threshold"]]
+    elif name == "dual_ma_volatility":
+        original = {**strategy_defaults(name), **original}
+        params = [{**original, "volatility_threshold": threshold} for threshold in (.02, .03, .04)
+                  if threshold != original["volatility_threshold"]]
+    elif name == "buy_and_hold":
+        raise ValueError("预算内买入持有没有可供滚动筛选的参数")
     elif name in ("rsi_reversal", "rsi_reversion"):
         params = [{"window": 7, "buy_threshold": 30, "sell_threshold": 70}, {"window": 14, "buy_threshold": 30, "sell_threshold": 70}, {"window": 21, "buy_threshold": 35, "sell_threshold": 65}]
     elif name == "bollinger_bands":
@@ -134,6 +145,7 @@ def run_walk_forward(frames: dict[str, pd.DataFrame], config: dict, training_day
         prior_benchmark = visible[-1]["benchmark"]
     return {"kind": "walk_forward", "folds": folds, "metrics": out["metrics"], "series": out["series"],
             "trades": out["trades"], "config": out_config, "training_days": training_days, "test_days": test_days,
+            **({"dividends": out["dividends"]} if "dividends" in out else {}),
             "selection_objective": "训练区间收益率 + 0.5 × 最大回撤（负数），并列时选列表靠前候选。",
             "assumptions": [*out["assumptions"], "样本外账户连续；每个训练实验独立初始化资金。最后不足 5 日的尾部不纳入。",
                             "滚动训练允许使用此前已结束的测试时段；本实现未提供独立的最终保留测试集。"]}

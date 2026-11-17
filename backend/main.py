@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from backend.api.routes import assistant, catalog, evidence, notes, runs, sessions
+from backend.api.routes import assistant, catalog, chan, decision, evidence, notes, runs, sessions, strategy_demo
 from backend.core.data_center import DataCenter, DataUnavailable, data_root
 from backend.services.errors import ResearchError
 from backend.services.evidence import EvidenceService
@@ -43,11 +43,17 @@ def create_app(root: str | Path | None = None, *, run_jobs: bool = True) -> Fast
         application.state.evidence = EvidenceService(research, center)
         application.state.notes = NoteService(research)
         application.state.projects = ProjectStore(selected_root)
+        from backend.workbench.etf_schedule import Scheduler
+        etf_scheduler = Scheduler(selected_root / 'workbench' if root is not None else workbench_store.DATA) if run_jobs else None
+        if etf_scheduler:
+            etf_scheduler.start()
         if runner:
             runner.start()
         try:
             yield
         finally:
+            if etf_scheduler:
+                etf_scheduler.close()
             if runner:
                 runner.close()
 
@@ -107,7 +113,7 @@ def create_app(root: str | Path | None = None, *, run_jobs: bool = True) -> Fast
                   for error in exception.errors()]
         return JSONResponse(status_code=422, content={"detail": errors, "code": "invalid_request"})
 
-    for routes in (catalog, runs, sessions, evidence, notes, assistant, projects):
+    for routes in (catalog, runs, sessions, evidence, notes, assistant, projects, strategy_demo, chan, decision):
         application.include_router(routes.router)
     application.include_router(workbench_router)
     from backend.api.routes import us_equities
