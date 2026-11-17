@@ -1,10 +1,18 @@
 <p align="center"><img src="docs/images/readme-header.svg" alt="QuantSandbox · 可追溯、可检验、可复现的投资研究" width="100%" /></p>
 <h1 align="center">QuantSandbox</h1>
 <p align="center"><strong>本地投资研究与量化分析工作台</strong></p>
-<p align="center"><a href="README.md">English</a> · <strong>简体中文</strong> · <a href="CONTRIBUTING.md">参与贡献</a> · <a href="https://github.com/tail258/QuantSandbox/releases">下载发布</a></p>
+<p align="center"><a href="README.md">English</a> · <strong>简体中文</strong> · <a href="#工作台预览">工作台预览</a> · <a href="#打开与安装">快速开始</a> · <a href="CONTRIBUTING.md">参与贡献</a> · <a href="https://github.com/tail258/QuantSandbox/releases">下载发布</a></p>
 <p align="center"><a href="https://github.com/tail258/QuantSandbox/actions/workflows/check.yml"><img src="https://github.com/tail258/QuantSandbox/actions/workflows/check.yml/badge.svg" alt="自动检查" /></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-959DA7?style=flat-square" alt="MIT" /></a> <img src="https://img.shields.io/badge/markets-read--only-F5C542?style=flat-square" alt="市场只读" /></p>
 
 在同一个本地工作台完成公司研究、产业观察、统计分析与策略验证。浏览器用于交互，Python 负责数据、计算和证据；Codex 可通过 CLI 与 API 调用同一套逻辑。市场操作只读，没有券商连接或实盘下单。
+
+## 工作台预览
+
+![金融终端主题：合成双均线回测、行情图、成交证据与重放控件](docs/images/replay-synthetic-zh.png)
+
+*金融终端主题下的策略重放。截图里即使出现真实证券代码，示例价格也是合成的，用于演示如何复核，不代表实盘或历史业绩。*
+
+可以先跑[离线示例](#离线复现)，无需行情账户就能生成并校验同一份证据。
 
 ## 美股公司研究 · 首期范围
 
@@ -12,7 +20,9 @@
 
 ## 打开与安装
 
-已有环境双击 `start.cmd`，打开 **http://127.0.0.1:8766**。只监听本机；不会自动刷新行情、设置定时任务或写入笔记库。
+下面的命令克隆当前公开 main；需要固定版本，可下载 [v3.2.0 源码包](https://github.com/tail258/QuantSandbox/releases/tag/v3.2.0)。上文的麦当劳研究模块在该标签之后加入，需使用当前 main。
+
+已有环境双击 `start.cmd`，打开 **http://127.0.0.1:8766**。只监听本机；默认不自动刷新行情或写入笔记库。
 
 界面默认英文，可在顶部切换 English / 中文。主题提供原有经典浅色与黑灰金色的金融终端主题；语言和主题选择保存在当前浏览器，刷新后保留。切换只影响界面展示，研究原文、用户输入和归档证据保留原样。
 
@@ -78,7 +88,7 @@ Obsidian 默认显示排版笔记，可切换 Markdown 源码；本机路径设�
 .\.venv\Scripts\python.exe -X utf8 scripts/reproduce.py
 ```
 
-示例在两个独立临时目录中计算基线、导出证据、导入并重放，核对固定快照与结果哈希；不一致时返回失败。需要保留示例包时，添加 `--output exports/repro-demo`，目标必须为新目录或空目录。完整说明见 [离线复现](docs/reproducibility.md)（英文）。
+示例在两个独立临时目录中计算基线、导出证据、导入并重放，核对固定快照与结果哈希；不一致时返回失败。想在页面打开截图中的示例，运行时加上 `--output exports/repro-demo`，目标须为新目录或空目录。启动工作台，在「验证 → 策略与推演」中打开「记录操作 → 导入证据包」，选择原始的 `exports/repro-demo/evidence.json`。完整说明见 [离线复现](docs/reproducibility.md)（英文）。
 
 [Release](https://github.com/tail258/QuantSandbox/releases) 提供固定提交的源码 ZIP、发布清单及 SHA256SUMS。源码包不含个人数据、依赖或预构建前端；按安装步骤构建即可使用。[发布说明](docs/releases.md)（英文）介绍校验与重新打包方法。
 
